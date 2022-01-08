@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-06 21:09:04
- * @LastEditTime: 2022-01-08 15:37:15
+ * @LastEditTime: 2022-01-08 22:25:31
  */
 #include"fs/qufs/inode.h"
 #include"fs/qufs/fs.h"
@@ -11,6 +11,9 @@
 #include"kstdio.h"
 #include"qmath.h"
 
+#ifndef _DEBUG_FS_INODE
+#define printk printf_null
+#endif
 void get_inode_phy_location(qu_inode_phy_location_t*loc,uint32 inode,qufs_desc_t*fs)
 {
     uint32 abs_lba=fs->sb->inode_table_lba+inode*sizeof(qu_inode_t)/512;
@@ -116,6 +119,24 @@ void qu_inode_sync(qufs_desc_t*fs,qu_inode_t*inode)
         free(buf);
     }
 }
+int32 qu_inode_bitmap_alloc(qufs_desc_t*fs)
+{
+    //printf("addr 0x%x\n",fs->inode_bitmap);
+    printbins(fs->inode_bitmap->bits,32);
+
+    int32 idx=ubitmap_scan(1,fs->inode_bitmap);
+    if(idx==-1)return idx;
+    ubitmap_set_page(fs->inode_bitmap,idx);
+    return idx;
+}
+void qu_inode_init(qu_inode_t*inode,uint32 sect_lba,uint32 inode_idx)
+{
+    inode->data_sects[0]=sect_lba;
+    inode->inode_idx=inode_idx;
+    inode->open_cnts=0;
+    inode->write_deny=false;
+    inode->sz=512;//默认为1扇区大小
+}
 char *qu_inode_getdata(qufs_desc_t*fs,qu_inode_t*inode,uint32 *sect_cnt,bool check_safe)
 {
     uint32 abs_lba=inode->data_sects[0];
@@ -146,7 +167,7 @@ char *qu_inode_getdata(qufs_desc_t*fs,qu_inode_t*inode,uint32 *sect_cnt,bool che
     {
     if(!mem_is_safe(DIV_ROUND_UP(*sect_cnt,4),0.7f))
     {
-        printf("rate:%d/%d\n",active_memory.used_page_cnt,active_memory.max_page_cnt);
+        //printf("rate:%d/%d\n",active_memory.used_page_cnt,active_memory.max_page_cnt);
         free(all_blocks);
         return NULL;
     }

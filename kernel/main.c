@@ -2,7 +2,7 @@
  * @Description: kernel main
  * @Author: QIUFUYU
  * @Date: 2021-09-09 21:11:53
- * @LastEditTime: 2022-01-08 15:43:06
+ * @LastEditTime: 2022-01-08 21:51:01
  */
 #include"console.h"
 #include"gdt.h"
@@ -171,7 +171,13 @@ thread_init();
     {
         printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
     }
-    f=qu_file_search(fs,"/sys",&err);
+    f= qu_file_create(fs,"/crate1.txt",&err);
+    if(err!=ERR_SUCCESS)
+    {
+        printf("err:%d\n",err);
+        while(1);
+    }
+    f=qu_file_search(fs,"/crate1.txt",&err);
     if(err!=ERR_SUCCESS)
     {
         printk("OPEN FAIL! %d\n",err);
@@ -179,7 +185,8 @@ thread_init();
     {
         printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
     }
-    //while(1);
+    f=qu_file_search(fs,"/not",&err);
+    while(1);
         init_clock();
     init_timer(1000);
     intr_enable();

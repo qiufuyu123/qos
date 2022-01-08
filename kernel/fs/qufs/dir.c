@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-07 19:42:38
- * @LastEditTime: 2022-01-07 22:27:27
+ * @LastEditTime: 2022-01-08 22:07:46
  */
 #include"fs/qufs/dir.h"
 #include"fs/qufs/file.h"
@@ -12,7 +12,7 @@
 #include"qmath.h"
 #include"qassert.h"
 #include"fs/hdd.h"
-
+//#define _DEBUG_QUFS_DIR
 #ifndef _DEBUG_QUFS_DIR
 #define printk printf_null
 #endif
@@ -35,6 +35,7 @@ qu_dir_entry_t *qu_dir_getentry(qufs_desc_t*fs,char*pdir ,char *name)
     */
 
    qu_file_t*f=qu_file_get(fs,pdir);
+   //console_clean();
    printk("get file! %s\n",f->name);
    if(!f)return NULL;
    printk("f_name:%s\n",name);
@@ -42,7 +43,7 @@ qu_dir_entry_t *qu_dir_getentry(qufs_desc_t*fs,char*pdir ,char *name)
    {
        printk("has data!\n");
        char *buf=f->data.data;
-       printbins(buf,32);
+       //printbins(buf,SECTOR_SIZE/sizeof(qu_dir_entry_t)*sizeof(qu_dir_entry_t));
        printk("%s\n",buf);
        //while(1);
        qu_dir_entry_t*entry=calloc(SECTOR_SIZE/sizeof(qu_dir_entry_t),sizeof(qu_dir_entry_t));
@@ -56,9 +57,16 @@ qu_dir_entry_t *qu_dir_getentry(qufs_desc_t*fs,char*pdir ,char *name)
            
            //entry=buf;
            memcpy(entry,buf,SECTOR_SIZE/sizeof(qu_dir_entry_t)*sizeof(qu_dir_entry_t));
-           for (int i = 0; i <SECTOR_SIZE/sizeof(qu_dir_entry_t) ; i++)
+           for (int j = 0; j <SECTOR_SIZE/sizeof(qu_dir_entry_t) ; j++)
            {
-               if(strcmp(entry[i].file_namep,name)==0)
+               //printf("addr:%x %d\n",&entry[j].type,entry[j].type);
+               if(entry[j].type==FILE_UNKNOWN)
+               {
+                   //printf("null\n");
+                   free(entry);
+                   return NULL;
+               }
+               if(strcmp(entry[j].file_namep,name)==0)
                {
                    //free(entry);
                    printk("get it !\n");
@@ -70,12 +78,12 @@ qu_dir_entry_t *qu_dir_getentry(qufs_desc_t*fs,char*pdir ,char *name)
                        free(entry);
                        return NULL;
                    }
-                   memcpy(re,&entry[i],sizeof(qu_dir_entry_t));
-                   printf("0x%x\n",re);
+                   memcpy(re,&entry[j],sizeof(qu_dir_entry_t));
+                   //printf("0x%x\n",re);
                    return re;
                }else
                {
-                   printk("cmp :%s to %s\n",entry[i].file_namep,name);
+                   printk("cmp :%s to %s\n",entry[j].file_namep,name);
                }
            }
            //free(entry);
@@ -136,10 +144,14 @@ bool qu_dir_open(qufs_desc_t*fs,qu_inode_t*inode,char *pdir_name)
         return false;
     return true;
 }
-
+void qu_dir_close(qufs_desc_t*fs,char *pathname)
+{
+    //hashmap_remove(fs->file_map,qu_file_get)
+}
 
 bool qu_dir_sync_entry(qufs_desc_t*fs,qu_file_t*pdir,qu_dir_entry_t*entry,mem_cleaner_t*cleaner)
 {
+    if(!pdir)return false;
     qu_inode_t*pdir_inode=pdir->inode;
     uint32 dir_sz=pdir_inode->sz;
     uint32 dir_entry_sz=fs->sb->dir_entry_sz;

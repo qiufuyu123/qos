@@ -2,7 +2,7 @@
  * @Description: 简单的内存分配算法
  * @Author: QIUFUYU
  * @Date: 2021-09-25 11:52:37
- * @LastEditTime: 2022-01-07 23:35:37
+ * @LastEditTime: 2022-01-09 07:51:17
  */
 #include"mem/memory.h"
 #include"qstring.h"
@@ -470,6 +470,7 @@ uint32 free(void* address)
     {
     for(int i=0;i<large_mem_len;i++)
     {
+        
         if(large_mem_list[i].addr==address)
         {
             //这是个大内存块
@@ -478,17 +479,19 @@ uint32 free(void* address)
             return large_mem_list[i].p_sz*4096;
         }
     }
-    char*head=(void*)((uint32)address-1);
+    char*head=(char*)((uint32)address-1);
     char sz=*head;
     if(sz==0)
         return 0;//释放失败
     lock_acquire(&lock);
     uint8 real_sz=sz&0x0F;
+    
     if(active_memory.blocks[real_sz]!=NULL)
     {
         mem_block_t *ls=active_memory.blocks[real_sz];
         while (1)
         {
+            //printf("aaaaa\n");
             if(ls==NULL)
                 break;
             if((uint32)address>(uint32)ls && (uint32)address<(uint32)ls+4096)
@@ -498,11 +501,23 @@ uint32 free(void* address)
                 //我们需要检测used==0
                 //如果used==0
                 //则unsetpage
-
+                //printf("getit====================< %x %d %x\n",ls,ls->used,ls->prev);
                 if(ls->used==0&&ls->prev!=NULL)
                 {
+                    //printf("delet block!\n");
+                    if(ls->next)
+                    {
                     ls->next->prev=ls->prev;
                     ls->prev->next=ls->next;
+
+                    }
+                    else
+                    {
+                        //是最后一个block
+                        ///printf("last :(\n");
+                        ls->prev->next=NULL;
+
+                    }
                     uint32  addr=(uint32)ls;
                     unset_page(addr/4096);
                     unmap_page(addr);

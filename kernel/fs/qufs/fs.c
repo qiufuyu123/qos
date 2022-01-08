@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-05 11:22:56
- * @LastEditTime: 2022-01-08 15:39:22
+ * @LastEditTime: 2022-01-08 22:22:26
  */
 #include"fs/qufs/fs.h"
 #include"fs/hdd.h"
@@ -56,15 +56,20 @@ bool qufs_mount(qufs_desc_t*fs)
     {
         return false;
     }
-
+    
     if(ata_read(ata_selected_dev,fs->sb->bitmap_lba,fs->sb->bitmap_sect_num,fs->data_bitmap->bits)<0)
     {
         return false;
     }
+    printbins(fs->data_bitmap->bits,32);
+    //while(1);
     if(ata_read(ata_selected_dev,fs->sb->inode_bitmap_lba,fs->sb->inode_bitmap_sect_num,fs->inode_bitmap->bits)<0)
     {
         return false;
     }
+    printf("\n");
+    printbins(fs->inode_bitmap->bits,32);
+    //while(1);
     list_init(fs->inode_list);
     printk("next:%x tail:%x\n",fs->inode_list->head.next,&fs->inode_list->tail);
     //list_init(fs->dir_list);
@@ -158,6 +163,7 @@ printk("sz:%d\n",ata_selected_dev->size);
     //但是第一位还是分配给root目录
     //所以不需要动
     printk("write inode_bitmap!\n");
+    buf[0]=0xE0;
     if(ata_write(ata_selected_dev,sb->inode_bitmap_lba,sb->inode_bitmap_sect_num,buf)<0)
     {
         free_pages(buf,buff_sz);
@@ -199,6 +205,7 @@ printk("sz:%d\n",ata_selected_dev->size);
     printk("write root ! %d\n",sb->data_start_lba);
     //12243
     //while(1);
+    
     if(ata_write(ata_selected_dev,sb->data_start_lba,1,buf)<0)
     {
         free_pages(buf,buff_sz);
@@ -219,7 +226,7 @@ printk("sz:%d\n",ata_selected_dev->size);
     printk("root idx:%d sect:%d\n",qu_get_inode(re,0)->inode_idx,qu_get_inode(re,0)->data_sects[0]);
     char b[512];
     ata_read(ata_selected_dev,qu_get_inode(re,0)->data_sects[0],1,b);
-    printbins(b,32);
+    //printbins(b,32);
     //console_clean();
     int8 err= qu_file_reg(re,qu_get_inode(re,0),"/");
     if(err!=ERR_SUCCESS)

@@ -2,7 +2,7 @@
  * @Description: inode结构
  * @Author: QIUFUYU
  * @Date: 2021-12-05 11:11:50
- * @LastEditTime: 2021-12-19 12:04:22
+ * @LastEditTime: 2022-01-08 16:29:54
  */
 #ifndef _H_INODE
 #define _H_INODE
@@ -27,5 +27,8 @@ typedef struct qu_inode_phy_location
 }qu_inode_phy_location_t;
 void get_inode_phy_location(qu_inode_phy_location_t*loc,uint32 inode,qufs_desc_t*fs);
 qu_inode_t*qu_get_inode(qufs_desc_t*fs ,uint32 idx);
+int32 qu_inode_bitmap_alloc(qufs_desc_t*fs);
+void qu_inode_sync(qufs_desc_t*fs,qu_inode_t*inode);
+void qu_inode_init(qu_inode_t*inode,uint32 sect_lba,uint32 inode_idx);
 char *qu_inode_getdata(qufs_desc_t*fs,qu_inode_t*inode,uint32 *sect_cnt,bool check_safe);
 #endif

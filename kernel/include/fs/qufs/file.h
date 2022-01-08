@@ -2,7 +2,7 @@
  * @Description: qufs的文件（目录）
  * @Author: QIUFUYU
  * @Date: 2021-12-10 20:51:55
- * @LastEditTime: 2022-01-07 22:50:36
+ * @LastEditTime: 2022-01-08 21:46:54
  */
 #ifndef _H_QUFILE
 #define _H_QUFILE
@@ -33,6 +33,9 @@ enum QU_FILE_ERR
 {
     ERR_SUCCESS=0,
     ERR_NO_DATA_IN_INODE=1,
+    ERR_SYNC_FAIL,
+    ERR_GETFILE_FAIL,
+    ERR_NO_DATA_BLOCK,
     ERR_MEM_FAIL,
     ERR_HASH_FAIL,
     ERR_NULL_INODE,
@@ -41,7 +44,9 @@ enum QU_FILE_ERR
 //char *qu_long2short(char *name,uint32 len);
 enum QU_FILE_ERR qu_file_reg(qufs_desc_t*fs,qu_inode_t*inode,char *name);
 qu_file_t* qu_file_get(qufs_desc_t*fs,char *name);
+void qu_file_close(qufs_desc_t*fs,char *name);
 int32_t qu_bitmap_alloc(qufs_desc_t*fs);
+qu_file_t*qu_file_create(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err);
 void qu_bitmap_sync(qufs_desc_t*fs,uint32_t bit_idx,uint8_t bitmap_type);
 char *get_min_path(char *path);
 qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err);

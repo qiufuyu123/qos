@@ -2,22 +2,22 @@
  * @Description: 用户虚拟内存管理模块
  * @Author: QIUFUYU
  * @Date: 2021-10-02 18:24:09
- * @LastEditTime: 2021-12-05 19:23:13
+ * @LastEditTime: 2022-01-09 07:51:24
  */
 #include"console.h"
 #include"mem/ubitmap.h"
 #include"kstdio.h"
 #include"qmath.h"
 void ubitmap_set_page(ubitmap_t *bitmap, uint32 page_index) {
-    bitmap->bits[page_index/32] |= (1 << (page_index % 32));
+    bitmap->bits[page_index/32] |= (0x80 >> (page_index % 32));
 }
 
 void ubitmap_unset_page(ubitmap_t *bitmap, uint32 page_index) {
-    bitmap->bits[page_index/32] &= ~(1 << (page_index % 32));
+    bitmap->bits[page_index/32] &= ~(0x80 >> (page_index % 32));
 }
 
 int ubitmap_test_page(ubitmap_t *bitmap, uint32 page_index) {
-    return bitmap->bits[page_index/32] & (1 << (page_index % 32));
+    return bitmap->bits[page_index/32] & (0x80>> (page_index % 32));
 }
 
 uvir_addr_t uvir_init(uint32 vaddr_start,uint32 page_len)
@@ -57,14 +57,16 @@ int32 ubitmap_scan(uint32 psz,ubitmap_t *bitmap)
     //TODO: 没有实现向上取整
     for (i=0; i<bitmap->len/32; ++i) {
         if (bitmap->bits[i] != 0xFFFFFFFF) {
+            //printf("0x%x\n",bitmap->bits[i]);
             for (j=0; j<32; ++j) {
-                if (!(bitmap->bits[i] & (1 << j))) {
+                //printf("cmp to0x%x\n",0x80>> j);
+                if (!(bitmap->bits[i] & (0x80 >>j))) {
                     if(lst==-1)
                     { 
                         lst=i*32 + j;
                         fst=lst;
                         cnt=1;
-                        //printk("fst:%d lst:%d\n",fst,lst); 
+                        printk("fst:%d lst:%d %d\n",fst,lst,j); 
                     }
                     else if(i*32 + j-lst==1)
                     {

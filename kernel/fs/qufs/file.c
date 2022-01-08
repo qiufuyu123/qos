@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-10 21:13:39
- * @LastEditTime: 2022-01-08 15:42:09
+ * @LastEditTime: 2022-01-08 22:15:37
  */
 #include"fs/qufs/file.h"
 #include"fs/qufs/dir.h"
@@ -83,6 +83,31 @@ static char *path_parse(char *path_name,char *p_name)
     return ls_name;
     
 }
+
+//从路径中获得父路径
+// /a/b.txt
+//return: /a *child : b.txt
+char *get_pdir_path(char *path,char *child)
+{
+    char *ret=strdup(path);
+    memset(ret,0,strlen(path)+1);
+    char *src_path=path;
+    char *last_split=NULL;
+    for(int i=0;i<strlen(src_path);i++)
+    {
+        if(src_path[i]=='/')last_split=&src_path[i];
+        //*ret++=src_path[i];
+    }
+    if(!last_split)
+    {
+        free(ret);
+        return NULL;
+    }
+    memcpy(ret,path,(uint32)last_split-(uint32)path+1);
+    //ret[strlen(ret)]='/';
+    strcpy(child,last_split+1);
+    return ret;
+}
  char *get_min_path(char *path)
 {
     //简化路径 （将../和 ./简化）
@@ -119,6 +144,129 @@ static qu_file_t*new_file()
     return re;
 
 }
+
+qu_file_t*qu_file_create(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
+{
+    char file_name[MAX_FILE_NAME_LEN];
+    char *pdir_name=get_pdir_path(path,file_name);
+    
+    if(!pdir_name)
+    {
+        *err=ERR_BAD_PATH;
+        return NULL;
+    }
+    //console_clean();
+    printk("pdir:%s child:%s 0x%x\n",pdir_name,file_name,fs);
+    //while(1);
+    int32 inode_idx=qu_inode_bitmap_alloc(fs);
+    printf("inode:%d\n",inode_idx);
+    //inode_idx=qu_inode_bitmap_alloc(fs);
+    //printf("inode:%d\n",inode_idx);
+    /**
+     * 此处操作
+     * 首先，先根据inode_bitmap找到一块在inode_list里的
+     * 空inode的编号
+     * 然后初始化一个inode
+     * 最后根据这个inode同步到磁盘
+     */
+    printk("p1");
+    //while(1);
+    if(inode_idx==-1)
+    {
+        free(pdir_name);
+        *err=ERR_NULL_INODE;
+    }
+    qu_inode_t*file_inode=calloc(1,sizeof(qu_inode_t));
+    if(!file_inode)
+    {
+        free(pdir_name);
+        ubitmap_unset_page(fs->data_bitmap,inode_idx);
+        *err=ERR_NULL_INODE;
+        return NULL;
+    }
+    printk("p2");
+    int32 disk_lba=qu_bitmap_alloc(fs);
+    if(disk_lba==-1)
+    {
+        free(pdir_name);
+        free(file_inode);
+        *err=ERR_NO_DATA_BLOCK;
+        return NULL;
+    }
+    printk("p3");
+    qu_inode_init(file_inode,disk_lba,inode_idx);
+    printk("p4");
+    
+    qu_dir_entry_t*ent= qu_dir_new_entry(file_name,inode_idx,FILE_FILE);
+    if(!ent)
+    {
+        free(pdir_name);
+        free(file_inode);
+        ubitmap_unset_page(fs->data_bitmap,disk_lba-fs->sb->data_start_lba);
+        *err=ERR_MEM_FAIL;
+        return NULL;
+    }
+    mem_cleaner_t clean;
+    int8 e;
+    qu_file_t*parent_dir= qu_file_search(fs,pdir_name,&e);
+    
+    if(e!=ERR_SUCCESS)
+    {
+        *err=e;
+        free(pdir_name);
+        free(file_inode);
+        free(ent);
+        ubitmap_unset_page(fs->data_bitmap,disk_lba-fs->sb->data_start_lba);
+        return NULL;
+    }
+    if(!qu_dir_sync_entry(fs,parent_dir,ent,&clean))
+    {
+        *err=ERR_SYNC_FAIL;
+        free(pdir_name);
+        free(file_inode);
+        //free(parent_dir);
+        free(ent);
+        ubitmap_unset_page(fs->data_bitmap,disk_lba-fs->sb->data_start_lba);
+        mem_cleaner_clean(&clean,false);
+        return NULL;
+    }
+    
+    qu_inode_sync(fs,file_inode);
+    qu_inode_sync(fs,parent_dir->inode);
+    qu_bitmap_sync(fs,inode_idx,QU_BITMAP_INODE);
+
+    
+    
+    
+    //free(pdir_name);
+    //free(file_inode);
+    //free(parent_dir);
+    free(ent);
+    //注册文件
+    //重新打开,刷新缓冲区
+    
+    strcat(pdir_name,"/");
+    strcat(pdir_name,file_name);
+    e= qu_file_reg(fs,file_inode,pdir_name);
+    //printf("reg file:%s\n",pdir_name);
+    if(e!=ERR_SUCCESS)
+    {
+        *err=e;
+        free(file_inode);
+        return NULL;
+    }
+    qu_file_t*ret= qu_file_get(fs,pdir_name);
+    free(pdir_name);
+    if(!ret)
+    {
+        *err=ERR_GETFILE_FAIL;
+        return NULL;
+    }
+    *err=ERR_SUCCESS;
+    return ret;
+}
+
+
 qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
 {
     if(!strcmp(path,"/")||!strcmp(path,"/.")||!strcmp(path,"/.."))
@@ -140,7 +288,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
     if(f_ptr)
     {
         //已经打开了，直接返回
-        printf("file has open!\n");
+        printk("file has open!\n");
         return f_ptr;
     }
     char *ret_path=calloc(1,512);
@@ -150,7 +298,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
     
     char *ls_path=path;
     ret_path[0]='/';
-    console_clean();
+    //console_clean();
     /**
      * 流程
      * 首先，会检测路径是否已经被打开（取最简路径）
@@ -161,7 +309,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
         /* code */
 
         //f_ptr=qu_file_get(fs,ret_path);//逐一查看是否被打开
-        //printf("check if is open:%s\n",ret_path);
+        //printf("check if is open:%s &%s\n",ret_path,last_ret_path);
         char *name=path_parse(ls_path,p_path);
         
         if(!name)
@@ -169,11 +317,12 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
             //printf("in min func null\n");
             if(strlen(p_path)!=0)
             {
-                printf("has p_path %s to %s\n",ret_path,p_path);
+                //printf("has p_path %s to %s\n",ret_path,p_path);
                 qu_dir_entry_t*ent= qu_dir_getentry(fs,ret_path,p_path);
                 if(!ent)
                 {
                     f_ptr=NULL;
+                    //printf("P\n");
                     break;
                 }
                 else{
@@ -183,7 +332,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
                     {
                         strcat(ret_path,"/");
                     }
-                    printf("reg as name:%s ent:%s %d\n",ret_path,ent->file_namep,ent->inode_idx);
+                    //printf("reg as name:%s ent:%s %d\n",ret_path,ent->file_namep,ent->inode_idx);
                     uint8_t e=qu_file_reg(fs,qu_get_inode(fs,ent->inode_idx),ret_path);
                     if(e!=ERR_SUCCESS)
                     {
@@ -193,7 +342,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
                         free(last_ret_path);
                         return NULL;
                     }
-                    printf("pause1\n");
+                    //printf("pause1\n");
                     f_ptr=qu_file_get(fs,ret_path);
                     break;
                 }
@@ -209,7 +358,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
                 }
                 else
                 {
-                    printf("no p_path %s to %s\n",last_ret_path,last_p_path);
+                    //printf("no p_path %s to %s\n",last_ret_path,last_p_path);
                     //不是根目录，是某个子目录
                     //不可能未被打开过(之前遍历时打开过)
                     qu_dir_entry_t *ent=qu_dir_getentry(fs,last_ret_path,last_p_path);
@@ -256,31 +405,39 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
                 free(last_ret_path);
                 return NULL;
             }
-            printf("open dir:%s reg file ok\n",ent->file_namep);
+            //printf("open dir:%s reg file ok\n",ent->file_namep);
             ls_path=name;
         }
     }
+    //printf("%x %x\n",ret_path,last_ret_path);
     free(ret_path);
+    //printf("2");
+    //printf("%x %x\n",ret_path,last_ret_path);
     free(last_ret_path);
+    //printf("whatup");
     if(!f_ptr)
     {
         *err=ERR_BAD_PATH;
-        
+        //printf("bad:(\n");
         return NULL;
     }
     *err=ERR_SUCCESS;
     return f_ptr;
+}
+void qu_file_close(qufs_desc_t*fs,char *name)
+{
+    hashmap_remove(fs->file_map,name);
 }
 enum QU_FILE_ERR qu_file_reg(qufs_desc_t*fs,qu_inode_t*inode,char *path)
 {
     if(!inode)return ERR_NULL_INODE;
     char *name=path;
     any_t ls=NULL;
-    printf("file map 0x%x\n",fs->file_map);
+    printk("file map 0x%x\n",fs->file_map);
     //if(hashmap_get(&fs->file_map,GetHash(name,strlen(path)+1)))return ERR_SUCCESS;
     if(hashmap_get(fs->file_map,name,&ls)==MAP_OK)return ERR_SUCCESS;
 
-    printf("not exsites! %s\n",name);
+    printk("not exsites! %s\n",name);
     qu_file_t*f=new_file();
     f->data.enable=true;
     if(!f)return ERR_MEM_FAIL;
@@ -294,7 +451,7 @@ enum QU_FILE_ERR qu_file_reg(qufs_desc_t*fs,qu_inode_t*inode,char *path)
         return ERR_NO_DATA_IN_INODE;
     }
     printk("getting data! %x\n",f->data.data);
-    printbins(f->data.data,32);
+    //printbins(f->data.data,32);
     //qu_dir_entry_t *entry=f->data.data;
     //printk("%s %d \n",entry->file_namep,entry->inode_idx);
     //while(1);
