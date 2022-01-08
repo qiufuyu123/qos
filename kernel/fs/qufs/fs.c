@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-05 11:22:56
- * @LastEditTime: 2022-01-02 22:22:32
+ * @LastEditTime: 2022-01-08 15:39:22
  */
 #include"fs/qufs/fs.h"
 #include"fs/hdd.h"
@@ -68,7 +68,13 @@ bool qufs_mount(qufs_desc_t*fs)
     list_init(fs->inode_list);
     printk("next:%x tail:%x\n",fs->inode_list->head.next,&fs->inode_list->tail);
     //list_init(fs->dir_list);
-    initHashTable(&fs->file_map);
+    //initHashTable(&fs->file_map);
+    fs->file_map=hashmap_new();
+    if(!fs->file_map)
+    {
+        printk("fail to alloc for hash_map\n");
+        return false;
+    }
     return true;
 }
 qufs_desc_t* init_qufs()
@@ -163,6 +169,10 @@ printk("sz:%d\n",ata_selected_dev->size);
     inodes->sz=sb->dir_entry_sz*3;
     inodes->inode_idx=0;
     inodes->data_sects[0]=sb->data_start_lba;
+    inodes++;
+    inodes->sz=sb->dir_entry_sz*3;
+    inodes->inode_idx=1;
+    inodes->data_sects[0]=sb->data_start_lba+1;
     //sizeof(qu_inode_t);
     printk("wirte inode_table!\n");
     if(ata_write(ata_selected_dev,sb->inode_table_lba,1,buf)<0)
@@ -211,7 +221,7 @@ printk("sz:%d\n",ata_selected_dev->size);
     ata_read(ata_selected_dev,qu_get_inode(re,0)->data_sects[0],1,b);
     printbins(b,32);
     //console_clean();
-    int8 err= qu_file_create(re,qu_get_inode(re,0),"/");
+    int8 err= qu_file_reg(re,qu_get_inode(re,0),"/");
     if(err!=ERR_SUCCESS)
     {
         printk("return err code:%d \n",err);
@@ -222,9 +232,11 @@ printk("sz:%d\n",ata_selected_dev->size);
     //qu_dir_open(re,)
     qu_file_t*f= qu_file_get(re,"/");
     qu_dir_entry_t*entry= qu_dir_getentry(re,"/","sys");
+    printk("0x%x\n",entry);
     if(!entry)
     {
         printk("fail to get dir entry !");
+        return NULL;
     }
     else
     {

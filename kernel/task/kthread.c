@@ -2,7 +2,7 @@
  * @Description: 内核线程
  * @Author: QIUFUYU
  * @Date: 2021-09-29 21:31:39
- * @LastEditTime: 2022-01-03 15:44:22
+ * @LastEditTime: 2022-01-08 11:58:06
  */
 #include"task/kthread.h"
 #include"mem/malloc.h"
@@ -152,26 +152,33 @@ struct task_struct* thread_start(char* name, int prio, thread_func function, voi
 
    // 把新创建的线程加入了就绪队列和全部线程队列
    /* 确保之前不在队列中 */
-   //printk("as1\n");
+   printk("as1\n");
    ASSERT(!elem_find(&thread_ready_list, &thread->general_tag));
    /* 加入就绪线程队列 */
    list_append(&thread_ready_list, &thread->general_tag);
 
    /* 确保之前不在队列中 */
-   //printk("as2\n");
+   printf(",,d %x %x\n",thread_all_list.head.next->next,&thread_all_list.tail);
+   printk("as2 %x %x\n",&thread_all_list,&thread->all_list_tag);
    ASSERT(!elem_find(&thread_all_list, &thread->all_list_tag));
    /* 加入全部线程队列 */
-   //printk("as13\n");
+   printk("as13\n");
    list_append(&thread_all_list, &thread->all_list_tag);
 
    return thread;
 }
-
+void test2(struct list_elem* elem)
+{
+   elem->next=0x114514;
+}
 /* 将kernel中的main函数完善为主线程 */
 static void make_main_thread(void) {
 /* 因为main线程早已运行,咱们在loader.S中进入内核时的mov esp,0xc009f000,
 就是为其预留了tcb,地址为0xc009e000,因此不需要通过get_kernel_page另分配一页*/
    main_thread = running_thread();
+   //sizeof(task_struct_t);
+   printbins(main_thread,sizeof(task_struct_t));
+   //while(1);
    console_print_str("main tcb:0x");
    console_print_hex(main_thread);
    init_thread(main_thread, "main", 31);
@@ -179,7 +186,17 @@ static void make_main_thread(void) {
 /* main函数是当前线程,当前线程不在thread_ready_list中,
  * 所以只将其加在thread_all_list中. */
    ASSERT(!elem_find(&thread_all_list, &main_thread->all_list_tag));
+   //printf("before 0x%x\n",main_thread->all_list_tag.next);
+   //test2(&main_thread->all_list_tag);
+   int a=sizeof(task_struct_t);
+   //printbins(main_thread,sizeof(task_struct_t));
+   //printf("check stack:0x%x to 0x%x %d\n",(uint32)running_thread(),(uint32)&a,a);
    list_append(&thread_all_list, &main_thread->all_list_tag);
+   //printbins(main_thread,sizeof(task_struct_t));
+   //printf("it is:0x%x\n",main_thread->all_list_tag.prev);
+   //while(1);
+      //printf("after 0x%x addr:0x%x\n",(&main_thread->all_list_tag)->next,&main_thread->all_list_tag.next);
+   
 }
 
 /* 实现任务调度 */
@@ -225,13 +242,20 @@ pid_bitmap=malloc(sizeof(ubitmap_t));
 
    pid_bitmap->len=0x1000+32;
    pid_bitmap->bits=malloc(0x1000+32);
-   //printf("b");
+   printf("b");
    console_print_str("thread_init start\n");
    list_init(&thread_ready_list);
    list_init(&thread_all_list);
    list_init(&thread_died_list);
+   
 /* 将当前main函数创建为线程 */
+   
+printf("c");
    make_main_thread();
+   printf("d");
+   //console_print_hex(thread_all_list.head.next->next);
+   printf("d %x %x\n",thread_all_list.head.next->next,&thread_all_list.tail);
+   //while(1);
    idle_thread=thread_start("idle",10,idle,NULL);
    console_print_str("thread_init done\n");
    

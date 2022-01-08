@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-09-16 21:43:56
- * @LastEditTime: 2021-10-07 21:24:35
+ * @LastEditTime: 2022-01-06 23:00:19
  */
 #include"qstring.h"
 #include"mem/malloc.h"
@@ -123,7 +123,7 @@ char * strdup(const char *str)
 
       return(NULL);
 
-   if (p = malloc(strlen(str) + 1))
+   if (p = calloc(1,strlen(str) + 1))
 
       return(strcpy(p,str));
 

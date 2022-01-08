@@ -30,7 +30,7 @@ run:
 	@echo "creating VMWARE disk..."
 	-rm kernel-vm-disk.vmdk -rf
 	qemu-img convert -f raw -O vmdk hd2.img kernel-vm-disk.vmdk
-	qemu -cdrom kernel.iso -hda hd.img -boot d -m 512M
+	qemu  -cdrom kernel.iso -hda hd2.img -boot d -m 512M
 	@echo "COMPILE OK!NOW HAVE FUN IN VMWARE!"
 clean:
 	-rm boot/*.o
@@ -42,6 +42,7 @@ clean:
 	-rm kernel/fs/qufs/*.o
 	-rm kernel/task/*.o
 	-rm kernel/device/*.o
+	-rm kernel/mem/*.o
 cdisk:
 	-mount hd.img hd
 	-rm hd/d1/*.elf

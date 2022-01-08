@@ -2,11 +2,13 @@
  * @Description: 列表
  * @Author: QIUFUYU
  * @Date: 2021-09-30 19:43:22
- * @LastEditTime: 2021-09-30 19:43:22
+ * @LastEditTime: 2022-01-08 12:02:44
  */
 #include "list.h"
 #include "isr.h"
-
+#include"kstdio.h"
+#include"console.h"
+#include"task/kthread.h"
 /* 初始化双向链表list */
 void list_init (struct list* list) {
    list->head.prev = NULL;
@@ -29,7 +31,7 @@ void list_insert_before(struct list_elem* before, struct list_elem* elem) {
 
 /* 更新before的前驱结点为elem */
    before->prev = elem;
-
+   //printf("%x to %x b %x t:%x\n",before->prev->prev->next->next,before,elem->next,before);
    intr_set_status(old_status);
 }
 
@@ -40,7 +42,27 @@ void list_push(struct list* plist, struct list_elem* elem) {
 
 /* 追加元素到链表队尾,类似队列的先进先出操作 */
 void list_append(struct list* plist, struct list_elem* elem) {
+   /*printf("before:%x\n",elem->next);
+   test2(elem);
+   printf("after:%x\n",elem->next);
+   */
+   //console_clean();
+   //printf("before: %x\n",elem->next);
+   //printbins(running_thread(),sizeof(task_struct_t));
    list_insert_before(&plist->tail, elem);     // 在队尾的前面插入
+   //printf("before: %x a:%xr:%x\n",elem->next,elem,running_thread()->all_list_tag.next);
+   //printf("unn:%x\n",running_thread()->all_list_tag.next);
+   //printf("unn:%x\n",running_thread()->all_list_tag.next);
+   //console_print_hex(running_thread()->all_list_tag.next);
+  // console_print_hex(running_thread()->all_list_tag.next);
+   //printk("\n");
+   //printbins(running_thread(),sizeof(task_struct_t));
+   //console_print_hex(running_thread()->all_list_tag.next);
+   //printf("after %x addr:0x%x\n",elem->next,&elem->next);
+   //console_print_hex(running_thread()->all_list_tag.next);
+   //uint32 buf=elem->next;
+   //elem->next=buf;
+   //while(1);
 }
 
 /* 使元素pelem脱离链表 */
@@ -64,6 +86,7 @@ struct list_elem* list_pop(struct list* plist) {
 bool elem_find(struct list* plist, struct list_elem* obj_elem) {
    struct list_elem* elem = plist->head.next;
    while (elem != &plist->tail) {
+      //printf("e:%x to t:%x\n",elem,&plist->tail);
       if (elem == obj_elem) {
 	 return true;
       }

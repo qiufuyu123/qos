@@ -34,9 +34,8 @@ section .bss                        ; bss section
 align 4
 
 stack_bottom:
-    resb 0x10E00                  ; 0x1200*n
+    resb 0xE000                  ; 0x1200*n
 stack_top:                          ; the stack
-stack_pcb:
     resb 0x1200
 
 section .text                       ; code section
@@ -93,7 +92,7 @@ L1: mov dword[ebx+edi], edx
 higher_half_start:
     mov esp, stack_top
     ; call kernel main function
-    ;add esp,0x1200
+    ;add esp,0xC0000000
     ; pass the multiboot header address, which GRUB stores at ebx
     add ebx, KERNEL_VIRTUAL_BASE
     push ebx

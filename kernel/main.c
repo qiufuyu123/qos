@@ -2,7 +2,7 @@
  * @Description: kernel main
  * @Author: QIUFUYU
  * @Date: 2021-09-09 21:11:53
- * @LastEditTime: 2022-01-03 15:53:21
+ * @LastEditTime: 2022-01-08 15:43:06
  */
 #include"console.h"
 #include"gdt.h"
@@ -10,7 +10,7 @@
 #include"mem/memory.h"
 #include"task/kthread.h"
 #include"isr.h"
-
+#include"qassert.h"
 #include"keyboard.h"
 #include"task/process.h"
 #include"test/edit.h"
@@ -52,8 +52,10 @@ void test()
 
 #define VIRTUAL_KERNEL_BASE 0xC0000000
 void kernel_main(multiboot_info_t *mbt)
-{
+{int b;
     intr_disable();
+    
+
     console_pre_init();
     //此时由于内存管理模块还没写好
     //所以console不启用双缓冲
@@ -67,18 +69,20 @@ void kernel_main(multiboot_info_t *mbt)
     console_debug("Load IDT...",DEBUG_OK);
     
     init_memory(mbt);
+    printf("t:%x v:%x\n",running_thread(),&b);
+    //while(1);
     console_debug("Setup Memory...",DEBUG_OK);
     //malloc(2);
     //内存管理写好后
     //开始启用双缓冲
     console_init();
     console_clean();
-    thread_init();
-    init_syscall();
+    
     //fatInit();
     
     console_debug("Setup Kernel Thread... ",DEBUG_OK);
-
+thread_init();
+    init_syscall();
 
     ata_init();
     ata_set_selected_dev(get_ata_device("/dev/hda"));
@@ -120,21 +124,13 @@ void kernel_main(multiboot_info_t *mbt)
     thread_start("kernel_main",31,k_thread_a,"argB ");
     task_struct_t*u1= process_execute(u_proc_a,"u1");
     //uint32 upid=u1->pid;
-    f32 *fat_fs= makeFilesystem("fat32");
+    /*f32 *fat_fs= makeFilesystem("fat32");
     printf("fs:%x\n",fat_fs);
-    fs_interface_init(fat_fs);
-    init_clock();
-    init_timer(1000);
-    intr_enable();
-    
-    init_keyboard();
-    
-    
+    fs_interface_init(fat_fs);*/
+    console_clean();
 
-    while(1)
-    {
-        //printf("aaa");
-    }
+    
+    
     //printf("\n");
     //int fd=sys_open("/d1/new2.txt","r+");
     //printf("fd:%d\n",fd);
@@ -155,7 +151,54 @@ void kernel_main(multiboot_info_t *mbt)
     printk("dev:0x%x\n",dev);
     ata_set_selected_dev(dev);
     qufs_desc_t*fs= init_qufs();
+    console_clean();
+    if(fs)
+    {
+    printk("qufs has inited OKAY!\n");
+    }
+    else
+    {
+        printk("qufs init fail!\n");
+        ASSERT(false);
+    }
+    uint8_t err=0;
+    qu_file_t*f;
+    f=qu_file_search(fs,"/sys",&err);
+    if(err!=ERR_SUCCESS)
+    {
+        printk("OPEN FAIL! %d\n",err);
+    }else
+    {
+        printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
+    }
+    f=qu_file_search(fs,"/sys",&err);
+    if(err!=ERR_SUCCESS)
+    {
+        printk("OPEN FAIL! %d\n",err);
+    }else
+    {
+        printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
+    }
+    //while(1);
+        init_clock();
+    init_timer(1000);
+    intr_enable();
     
+    init_keyboard();
+    //printk("get min :%s\n",get_min_path("/a/./././././../b/././c/d/../e"));
+    while (1)
+    {
+        // code 
+    }
+
+    
+
+    
+
+    while(1)
+    {
+        //printf("aaa");
+    }
     while(1);
     struct SystemDate *date=calloc(1,sizeof(struct SystemDate));
     while(1)

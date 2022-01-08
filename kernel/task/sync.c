@@ -2,11 +2,12 @@
  * @Description: 锁机制
  * @Author: QIUFUYU
  * @Date: 2021-09-30 21:51:04
- * @LastEditTime: 2022-01-03 15:41:04
+ * @LastEditTime: 2022-01-07 23:32:47
  */
 #include"task/sync.h"
 #include"isr.h"
 #include"qassert.h"
+#include"kstdio.h"
 #include"console.h"
 void sema_init(struct semaphore* psema, uint8 value) {
    psema->value = value;       // 为信号量赋初值
@@ -62,13 +63,31 @@ void sema_up(struct semaphore* psema) {
 /* 获取锁plock */
 void lock_acquire(struct lock* plock) {
 /* 排除曾经自己已经持有锁但还未将其释放的情况。*/
+   
    if (plock->holder != running_thread()) { 
+      //console_print_str("a");
       sema_down(&plock->semaphore);    // 对信号量P操作,原子操作
       plock->holder = running_thread();
-      ASSERT(plock->holder_repeat_nr == 0);
+      //console_print_str("b");
+      //ASSERT(plock->holder_repeat_nr == 0);
+      //TODO:这里不能用ASSERT
+      //因为assert会调用console_debug 
+      //console_debug会调用此函数导致问题
+      if(plock->holder_repeat_nr!=0)
+      {
+         while (1)
+         {
+            /* code */
+         }
+         
+      }
+      
       plock->holder_repeat_nr = 1;
+      //console_print_str("end\n ");
    } else {
+      //while(1);
       plock->holder_repeat_nr++;
+      //console_print_str("c");
    }
 }
 

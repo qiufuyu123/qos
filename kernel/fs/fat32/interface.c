@@ -2,7 +2,7 @@
  * @Description: fat32文件接口
  * @Author: QIUFUYU
  * @Date: 2021-10-07 08:25:36
- * @LastEditTime: 2022-01-03 10:45:39
+ * @LastEditTime: 2022-01-06 21:43:01
  */
 #include"fs/fat32/interface.h"
 #include"mem/malloc.h"
@@ -503,12 +503,12 @@ void fs_interface_init(f32 *fs)
     inter->self_data=NULL;
     
     ata_selected_dev->fs=inter;
-    int fd=ata_selected_dev->fs->methods.open("/d.txt","r");
+    /*int fd=ata_selected_dev->fs->methods.open("/d.txt","r");
     printk("open a fd:%d\n",fd);
     char buf[100];
     printk("read : %d\n",ata_selected_dev->fs->methods.read(fd,buf,100));
     printk("show time!\n%s\n",buf);
-    
+    */
     //while(1);
 }
 

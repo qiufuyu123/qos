@@ -2,7 +2,7 @@
  * @Description: 内存管理内核接口
  * @Author: QIUFUYU
  * @Date: 2021-09-25 16:15:42
- * @LastEditTime: 2021-12-10 21:28:07
+ * @LastEditTime: 2022-01-08 00:34:38
  */
 #include"mem/memory.h"
 #include"console.h"
@@ -65,11 +65,16 @@ void init_memory(multiboot_info_t* mbt) {
    }
     //malloc(4);          // To create the first free block
     lock_init(&lock);
-    printk("first page:0x%x vir:0x%x tmp:0x%x\n",malloc_pages(1),kernel_virt_end,&kernel_virt_end);
-    //while(1 );
+    printk("ruuning 0x%x\n",running_thread());
+    running_thread()->all_list_tag.next=0x114514;
+    printk("first page:0x%x vir:0x%x tmp:0x%x small_mem 0x\n",malloc_pages(1),kernel_virt_end,&kernel_virt_end);
+    //printf("l:%d\n",lock.holder_repeat_nr);
+    //while(1) 
+    malloc(1);
     init_large_mem(100);
-    
-    
+    //while(1 );
+    //init_large_mem(100);
+    //printk("whats up\n");
     //puts("\n");
     //puts("Kernel end location: 0x"); puthex(kernel_virt_end); puts("\n");
     //puts("Kernel size: "); putdec((kernel_virt_end - VIRTUAL_KERNEL_BASE)/1024); puts(" KB\n");

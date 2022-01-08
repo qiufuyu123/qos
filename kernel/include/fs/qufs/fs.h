@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-05 11:17:49
- * @LastEditTime: 2022-01-02 22:16:54
+ * @LastEditTime: 2022-01-07 22:43:57
  */
 #ifndef _H_QUFS
 #define _H_QUFS
@@ -29,7 +29,7 @@ typedef struct qufs_desc
     ubitmap_t*data_bitmap;
     list_t *inode_list;
     //list_t*dir_list;
-   table file_map;
+   map_t file_map;
 }qufs_desc_t;
 qufs_desc_t* init_qufs();
 bool qufs_mount(qufs_desc_t*fs);

@@ -1,0 +1,26 @@
+megs: 32
+romimage: file=/usr/share/bochs/BIOS-bochs-latest
+vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
+
+#第三步，设置 Bochs 所使用的磁盘，软盘的关键字为 floppy。 
+#若只有一个软盘，则使用 floppya 即可，若有多个，则为 floppya，floppyb… 
+#floppya: 1_44=a.img, status=inserted
+
+
+#第四步，选择启动盘符
+#boot: floppy #默认从软盘启动，将其注释 
+#boot: c  #改为从硬盘启动。我们的任何代码都将直接写在硬盘上，所以不会再有读写软盘的操作
+
+#第五步，设置日志文件的输出
+log: bochsout.txt
+
+#第六步，开启或关闭某些功能
+#下面是关闭鼠标，并打开键盘
+mouse: enabled=0
+#keyboard: enabled=1, map=/usr/share/bochs/keymaps/x11-pc-us.map
+
+# 硬盘设置
+ata0-master: type=disk, path="hd2.img", mode=flat
+ata0-slave: type=cdrom, path="kernel.iso", status=inserted
+boot: cdrom
+gdbstub: enabled=1, port=1234, text_base=0, data_base=0, bss_base=0;

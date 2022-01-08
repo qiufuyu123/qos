@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-07 19:42:38
- * @LastEditTime: 2022-01-02 22:20:53
+ * @LastEditTime: 2022-01-07 22:27:27
  */
 #include"fs/qufs/dir.h"
 #include"fs/qufs/file.h"
@@ -12,6 +12,10 @@
 #include"qmath.h"
 #include"qassert.h"
 #include"fs/hdd.h"
+
+#ifndef _DEBUG_QUFS_DIR
+#define printk printf_null
+#endif
 qu_dir_entry_t*qu_dir_new_entry(char *name,uint32 inode_idx,uint8 type)
 {
     qu_dir_entry_t*re=calloc(1,sizeof(qu_dir_entry_t));
@@ -67,6 +71,7 @@ qu_dir_entry_t *qu_dir_getentry(qufs_desc_t*fs,char*pdir ,char *name)
                        return NULL;
                    }
                    memcpy(re,&entry[i],sizeof(qu_dir_entry_t));
+                   printf("0x%x\n",re);
                    return re;
                }else
                {
@@ -127,7 +132,7 @@ qu_dir_entry_t *qu_dir_getentry(qufs_desc_t*fs,char*pdir ,char *name)
 
 bool qu_dir_open(qufs_desc_t*fs,qu_inode_t*inode,char *pdir_name)
 {
-    if(qu_file_create(fs,inode,pdir_name)!=ERR_SUCCESS)
+    if(qu_file_reg(fs,inode,pdir_name)!=ERR_SUCCESS)
         return false;
     return true;
 }

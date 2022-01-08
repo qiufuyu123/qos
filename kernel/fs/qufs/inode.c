@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-06 21:09:04
- * @LastEditTime: 2021-12-19 12:50:55
+ * @LastEditTime: 2022-01-08 15:37:15
  */
 #include"fs/qufs/inode.h"
 #include"fs/qufs/fs.h"
@@ -138,12 +138,15 @@ char *qu_inode_getdata(qufs_desc_t*fs,qu_inode_t*inode,uint32 *sect_cnt,bool che
     if(!*sect_cnt)
     {
         free(all_blocks);
-        return NULL;
+        //没有数据，则返回一个512字节的空数据
+        *sect_cnt=1;
+        return calloc(1,512);
     }
     if(check_safe)
     {
     if(!mem_is_safe(DIV_ROUND_UP(*sect_cnt,4),0.7f))
     {
+        printf("rate:%d/%d\n",active_memory.used_page_cnt,active_memory.max_page_cnt);
         free(all_blocks);
         return NULL;
     }

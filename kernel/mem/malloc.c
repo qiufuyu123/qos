@@ -2,7 +2,7 @@
  * @Description: 简单的内存分配算法
  * @Author: QIUFUYU
  * @Date: 2021-09-25 11:52:37
- * @LastEditTime: 2022-01-03 15:50:26
+ * @LastEditTime: 2022-01-07 23:35:37
  */
 #include"mem/memory.h"
 #include"qstring.h"
@@ -10,6 +10,7 @@
 #include"task/sync.h"
 #include"qassert.h"
 #include"kstdio.h"
+#include"task/kthread.h"
 uint32 KENEL_START_ID=0;
 #define DIV_ROUND_UP(X, STEP) ((X + STEP - 1) / (STEP))
 typedef struct Large_mem_info
@@ -125,8 +126,9 @@ void *get_a_thread_page(uint32 vaddr,bool is_kernel)
 }
 void *malloc_pages(uint32 sz)
 {
-
+    //printf("l:%x %x curun:0x%x %d\n",&lock,lock.holder,running_thread(),(int32)lock.holder_repeat_nr);
     lock_acquire(&lock);
+    //printf("a\n");
     int32 idx= get_pages(sz);
     //printf("            pages:idx:%d\n",idx);
     //console_print_dec(idx);
@@ -184,9 +186,10 @@ static const uint32 FREE_BLOCK = 0xc001d00d;
 static const uint32 ALLOC_BLOCK = 0xdeadd00d; 
 mem_block_t* alloc_mem_block(uint8 sz)
 {
-    
+    //printf("!!!");
+    //printk("run 0x%x\n",running_thread());
     void* page=allocate_new_page();
-    
+    //printf("???\n");
     if(page==NULL)
     {
         //*is_fail=true;
@@ -222,6 +225,7 @@ static void*alloc_block(mem_block_t *block)
     //后来发现是栈太小了
     //mov esp得大一点（现在0x2400)
     //by qiufuyu
+    //printk("block:%x\n",block);
     mem_block_t *ls_block=block;
     uint32 spit=(1<<(ls_block->sz+1))+1;
     uint32 max_num=(4096-sizeof(mem_block_t))/spit;
@@ -279,9 +283,12 @@ static void*alloc_block(mem_block_t *block)
 }
 static void* alloc_mem(uint8 sz)
 {
+    //printf("act:0x%x\n",active_memory.blocks[sz]);
+    //printk("run 0x%x\n",running_thread());
     if(active_memory.blocks[sz]==NULL)
     {
         //bool is_fail;
+        //printf("???\n");
         active_memory.blocks[sz]=alloc_mem_block(sz);
         //printf("sz:%d alloc a new page!\n",sz);
         
@@ -359,68 +366,68 @@ void *calloc(int cnt,int len)
 }
 void* malloc(uint32 size)
 {
-    lock_acquire(&lock);
-    ////printf("malloc :%d\n",size);
+    //lock_acquire(&lock);
+    //printf("malloc :%d\n",size);
     //先分割size
     if(size<=2)
     {
         
         void*re= alloc_mem(M_2);
-        lock_release(&lock);
+        //lock_release(&lock);
         //printf("000000000000000000malloc1:%x\n",re);
         return re;
     }
     else if(size>2&& size<=4)
     {
         void*re= alloc_mem(M_4);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }else if(size>4 && size<=8)
     {
         void*re= alloc_mem(M_8);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;  
     }else if(size>8 && size<=16)
     {
         void*re= alloc_mem(M_16);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }else if(size>16 && size<=32)
     {
         void*re= alloc_mem(M_32);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }else if(size>32 && size<=64)
     {
         void*re= alloc_mem(M_64);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }else if(size>64 && size<=128)
     {
         void*re= alloc_mem(M_128);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }else if(size>128 &&size<=256)
     {
         void*re= alloc_mem(M_256);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }else if(size>256 &&size<=512)
     {
         void*re= alloc_mem(M_512);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }
     else if(size>512 && size<=1024)
     {
         void*re= alloc_mem(M_1024);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }
     else if(size>1024 && size<=2048)
     {
         void*re= alloc_mem(M_2048);
-        lock_release(&lock);
+        //lock_release(&lock);
         return re;
     }
     else
@@ -444,7 +451,7 @@ void* malloc(uint32 size)
                 break;
             }
         }
-        lock_release(&lock);
+        //lock_release(&lock);
         //printf("error :malloc too big!\n");
         //while (1)
         //{
