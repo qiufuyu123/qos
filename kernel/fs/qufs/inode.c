@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-06 21:09:04
- * @LastEditTime: 2022-01-08 22:25:31
+ * @LastEditTime: 2022-01-10 21:46:16
  */
 #include"fs/qufs/inode.h"
 #include"fs/qufs/fs.h"
@@ -10,7 +10,7 @@
 #include"fs/hdd.h"
 #include"kstdio.h"
 #include"qmath.h"
-
+#include"driver/clock.h"
 #ifndef _DEBUG_FS_INODE
 #define printk printf_null
 #endif
@@ -136,6 +136,10 @@ void qu_inode_init(qu_inode_t*inode,uint32 sect_lba,uint32 inode_idx)
     inode->open_cnts=0;
     inode->write_deny=false;
     inode->sz=512;//默认为1扇区大小
+    inode->create_time=GET_CURDATE_BIN;
+    inode->last_edit_time=GET_CURDATE_BIN;
+    inode->last_visit_time=GET_CURDATE_BIN;
+    inode->special_tag=INODE_TAG_COMMON;
 }
 char *qu_inode_getdata(qufs_desc_t*fs,qu_inode_t*inode,uint32 *sect_cnt,bool check_safe)
 {

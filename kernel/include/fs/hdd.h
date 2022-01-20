@@ -2,7 +2,7 @@
  * @Description: 硬盘驱动
  * @Author: QIUFUYU
  * @Date: 2021-10-04 18:41:09
- * @LastEditTime: 2022-01-03 09:37:08
+ * @LastEditTime: 2022-01-18 22:29:34
  */
 #ifndef _H_HDD
 #define _H_HDD
@@ -341,6 +341,7 @@ struct IdeIdentifyInfo {
 }__attribute__((packed));
 typedef struct ata_device
 {
+	int dev_id;
 	uint16_t io_base;
 	uint16_t associated_io_base;
 	uint8_t irq;
@@ -354,12 +355,14 @@ typedef struct ata_device
 
 }ata_device_t;
 extern ata_device_t*ata_selected_dev;
+//extern int ata_selected_dev_id;
 uint8_t ata_init();
 int8_t ata_setzero(struct ata_device *device,uint64_t lba,uint16_t n_sectors);
 int8_t ata_read(struct ata_device *device, uint64_t lba, uint16_t n_sectors, uint16_t *buffer);
 int8_t ata_write(struct ata_device *device, uint64_t lba, uint16_t n_sectors, uint16_t *buffer);
 int8_t atapi_read(struct ata_device *device, uint32_t lba, uint8_t n_sectors, uint16_t *buffer);
 struct ata_device *get_ata_device(char *dev_name);
+struct ata_device *get_ata_device_by_id(uint32 idx);
 uint32 ata_get_disk_size(ata_device_t *dev);
 void ata_set_selected_dev(ata_device_t *dev);
 #endif

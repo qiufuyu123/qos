@@ -34,7 +34,7 @@ section .bss                        ; bss section
 align 4
 
 stack_bottom:
-    resb 0xE000                  ; 0x1200*n
+    resb 0x4000                  ; 0x1200*n
 stack_top:                          ; the stack
     resb 0x1200
 

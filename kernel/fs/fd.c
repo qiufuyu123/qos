@@ -2,20 +2,21 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-19 11:09:21
- * @LastEditTime: 2022-01-03 15:45:29
+ * @LastEditTime: 2022-01-16 19:57:02
  */
 #include"fs/fd.h"
 #include"task/kthread.h"
 #include"mem/malloc.h"
+#include"fs/hdd.h"
 fd_manager_t fs_fd_manager;
 static bool check_fd(uint32 fd)
 {
-    if(fd<fs_fd_manager.cnt&&fd>=0)return true;
+    if(fd<fs_fd_manager.cnt&&fd>0)return true;
     return false;
 }
 static uint32 fs_find_free(fd_err*e)
 {
-    for (uint32 i =0;  i < fs_fd_manager.cnt;i++)
+    for (uint32 i =1;  i < fs_fd_manager.cnt;i++)
     {
         /* code */
         if(!fs_fd_manager.fds[i].deny)
@@ -50,6 +51,7 @@ uint32 fs_put_fd(uint32 ptr, fd_type type,uint16 flags, fd_err *e)
     fs_fd_manager.fds[idx].target_ptr=ptr;
     fs_fd_manager.fds[idx].type=type;
     fs_fd_manager.fds[idx].pid=running_thread()->pid;
+    fs_fd_manager.fds[idx].fs_magic=ata_selected_dev->fs->info.magic;
     for(int i=3;i<FD_LIST_MAX;i++)
     {
         if(!running_thread()->open_fd[i])
@@ -87,6 +89,21 @@ void fs_deny_fd(uint32 i,bool state, fd_err *e)
     fs_fd_manager.fds[idx].deny=false;
     fs_fd_manager.last_free=idx;
     return FD_ERR_SUCCESS;
+}
+int32 fs_idx2fd(uint32 idx)
+{
+    for(int i=3;i<running_thread()->fd_cnt;i++)
+    {
+        if(running_thread()->open_fd[i]==idx)
+        {
+            return i;
+        }
+        if(running_thread()->open_fd[i]==0)return -1;
+    }
+}
+uint32 fs_fd2idx(uint32 fd)
+{
+    return running_thread()->open_fd[fd];
 }
 fd_desc_t *fs_get_fd(uint32 i)
 {

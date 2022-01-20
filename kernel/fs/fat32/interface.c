@@ -2,7 +2,7 @@
  * @Description: fat32文件接口
  * @Author: QIUFUYU
  * @Date: 2021-10-07 08:25:36
- * @LastEditTime: 2022-01-06 21:43:01
+ * @LastEditTime: 2022-01-18 21:17:43
  */
 #include"fs/fat32/interface.h"
 #include"mem/malloc.h"
@@ -10,10 +10,11 @@
 #include"kstdio.h"
 #include"console.h"
 #include"task/kthread.h"
-#include"isr.h"
-#include"fs/fd.h"
+//#include"isr.h"
+//#include"fs/fd.h"
 #include"fs/fs_interface.h"
 #include"fs/hdd.h"
+#define FAT_MAGIC 0xFA233
 //#include"task/sync.h"
 typedef char* string;
 struct directory *root_dir;
@@ -180,36 +181,10 @@ static fs_fd_t *new_fd(struct dir_entry *f,uint8 flag,char *fname,struct directo
     fd->fname=fname;
     fd->bind_dev=-1;
 }
-static int getflag(char c)
-{
-    if(c=='r')return O_RO;
-    else if(c=='w')return O_WO;
-    else if(c=='c')return O_CR;
-    else return -1;
-}
-static int getstrflag(char *flags)
-{
-    int f1=getflag(flags[0]);
-    if(f1==-1)return -1;
-    if(strlen(flags)==1)return f1;
-    else if(strlen(flags)==2)
-    {
-        int f2=getflag(flags[1]);
-        if(f1==O_RO&&f2==O_WO)return O_RW;
-        else return f1|f2;
-    }else return -1;
-}
-int fs_open_cflag(char *name,char *flags)
-{
-    //解析字符串形式的flags
-    int flag=getstrflag(flags);
-    if(flag==-1)return -1;
-    return fs_open(name,flag);
-}
-int fs_open(char *name,uint32 flags)
+void* fs_open(char *name,uint32 flags)
 {
     //打开文件时不允许其他进程干扰
-    intr_disable_loop();
+    
     char* fname;
     struct directory last_dir;
     struct dir_entry *f=NULL;
@@ -218,13 +193,14 @@ int fs_open(char *name,uint32 flags)
     fname=get_fname(name);
     //printf("fname:%s\n",f->name);
     //while(1);
-    if(f==NULL && !(flags&O_CR))
+
+    if(f==NULL && !((flags&FA_CREATE_ALWAYS)||(flags&FA_CREATE_NEW)))
     {
         free(fname);
-        intr_enable_loop();
+        
         //printf("not exesiz!\n");
         return -1;
-    }else if(f==NULL && (flags&O_CR))
+    }else if(f==NULL && ((flags&FA_CREATE_ALWAYS)||(flags&FA_CREATE_NEW)))
     {
         //TODO:此时需要创建一个文件
         //
@@ -245,29 +221,31 @@ int fs_open(char *name,uint32 flags)
         //printf("new:%x\n",f);
         struct directory *dir=malloc(sizeof(struct directory));
         memcpy(dir,&last_dir,sizeof (struct directory));
+        //TODO:FAT32文件系统需要重构、完善
+
         fs_fd_t*ls=new_fd(f,flags,fname,dir);
         if(!ls)
         {
             free(fname);
-            intr_enable_loop();
+            
             return -1;
         }
-        fd_err e;
-        int fd=fs_put_fd(ls,FD_FILE,flags,&e);
-        if(e!=FD_ERR_SUCCESS)
+        //fd_err e;
+        //int fd=fs_put_fd(ls,FD_FILE,flags,&e);
+        /*if(e!=FD_ERR_SUCCESS)
         {
             free(fname);
             free(ls);
-            intr_enable_loop();
+            
             return -1;
-        }
+        }*/
         
-         return fd;
+         return ls;
     }
     if(!(f->dir_attrs&FAT_FILE))
     {
         //printf("not file!\n");
-        intr_enable_loop();
+        
         return -1;
     }
     struct directory *dir=malloc(sizeof(struct directory));
@@ -281,81 +259,44 @@ int fs_open(char *name,uint32 flags)
     {
         free(fname);
         free(dir);
-        intr_enable_loop();
+        
         return -1;
-    }
-    fd_err e;
-    int fd=fs_put_fd(ls,FD_FILE,flags,&e);
-    if(e!=FD_ERR_SUCCESS)
-    {
-        free(fname);
-        free(dir);
-        free(ls);
-        intr_enable_loop();
-        return -1;
-    }
-    intr_enable_loop();
-    return fd;
-
-}
-uint32 fs_tell(int fd)
-{
-    intr_disable_loop();
-    //清内存
-    fd_desc_t*file=fs_get_fd(fd);
-    if(!file)
-    {
-        intr_enable_loop();
-        return ;
     }
     
-    fs_fd_t*self=file->target_ptr;
+    return ls;
 
-    intr_enable_loop();
+}
+uint32 fs_tell(void* f)
+{
+    
+    //清内存
+    fs_fd_t*self=(fs_fd_t*)f;
+
+    
     return self->f->file_size-self->seek;
 }
-void fs_del(int fd)
+void fs_del(void* f)
 {
-    intr_disable_loop();
+    
     //清内存
-    fd_desc_t*file=fs_get_fd(fd);
-    if(!file)
-    {
-        intr_enable_loop();
-        return ;
-    }
-    fs_fd_t*self=file->target_ptr;
+    fs_fd_t*self=(fs_fd_t*)f;
     delFile(fatfs,self->last_dir,self->fname);
-    fs_close(fd);
-    intr_enable_loop();
+    fs_close(f);
+    
 }
-void fs_close(int fd)
+void fs_close(void* f)
 {
-    intr_disable_loop();
+    
     //清内存
-    fd_desc_t*file=fs_get_fd(fd);
-    if(!file)
-    {
-        intr_enable_loop();
-        return ;
-    }
-    free(file->target_ptr);
-    fs_del_fd(fd);
-    intr_enable_loop();
+    free(f);
+    
 }
-int fs_read(int fd,char *buff,uint32 size)
+int fs_read(void* f_des,char *buff,uint32 size)
 {
-    intr_disable_loop();
-    fd_desc_t*file=fs_get_fd(fd);
-    //fs_fd_t*self=file->target_ptr;
-    if(!file)
-    {
-        intr_enable_loop();
-        return -1;
-    }
-    fs_fd_t*self=file->target_ptr;
+    
+    fs_fd_t*self=(fs_fd_t*)f_des;
 
-        if(file->pid==running_thread()->pid&&self->f&&((self->flag&O_RW)||(self->flag&O_RO)))
+        if(self->f&&((self->flag&FA_READ)))
         {
             //printf("f:%s\n",self->f->name);
             //printf("===================");
@@ -370,7 +311,7 @@ int fs_read(int fd,char *buff,uint32 size)
                 //printf("seek:%d\n, tar:%s\n",self->seek, target);
                 memcpy(buff,target,self->f->file_size-self->seek);
                 free(addr);
-                intr_enable_loop();
+                
                 return self->f->file_size;
             }
             else 
@@ -384,46 +325,33 @@ int fs_read(int fd,char *buff,uint32 size)
                 else memcpy(buff,target,size);
             }
             free(addr);
-            intr_enable_loop();
+            
             return size;
         }
-    intr_enable_loop();
+    
     return 0;
 
 }
-void fs_lseek(int fd, uint32 offset ,uint8 flag)
+void fs_lseek(void* f_des, uint32 offset ,uint8 flag)
 {
-    intr_disable_loop();
-    fd_desc_t*file=fs_get_fd(fd);
-    if(!file)
-    {
-        intr_enable_loop();
-        return;
-    }
-    fs_fd_t*self=file->target_ptr;
-        if(file->pid==running_thread()->pid)
-        {
-            uint32 new_seek;
-            if(flag==SEEK_SET)
-                new_seek=offset;
-            else if(flag==SEEK_END)
-                new_seek=self->f->file_size-1;
-            else new_seek=0;
-            self->seek=new_seek;
-        }
-    intr_enable_loop();
+    
+
+    fs_fd_t*self=f_des;
+    uint32 new_seek;
+    if(flag==SEEK_SET)
+        new_seek=offset;
+    else if(flag==SEEK_END)
+        new_seek=self->f->file_size-1;
+    else new_seek=0;
+        self->seek=new_seek;
+    
 }
-uint32 fs_write(int fd,char*buf,uint32 size)
+uint32 fs_write(void* f_des,char*buf,uint32 size)
 {
-    intr_disable_loop();
-    fd_desc_t*file=fs_get_fd(fd);
-    if(!file)
-    {
-        intr_enable_loop();
-        return 0;
-    }
-    fs_fd_t*self=file->target_ptr;
-        if(file->pid==running_thread()->pid&&self->f&&((self->flag&O_RW)||(self->flag&O_WO)))
+    
+    
+    fs_fd_t*self=f_des;
+        if(self->f&&((self->flag&FA_WRITE)))
         {
             //根据lseek来写文件
             char *writen=NULL;
@@ -435,7 +363,7 @@ uint32 fs_write(int fd,char*buf,uint32 size)
             {
                 char *ls_buff=malloc(self->seek+size);
                 self->seek=0;
-                fs_read(fd,old_seek,ls_buff);
+                fs_read(f_des,old_seek,ls_buff);
                 self->seek=old_seek;
                 //writen=malloc(old_seek+size);
                 ls_buff+=old_seek;
@@ -449,27 +377,22 @@ uint32 fs_write(int fd,char*buf,uint32 size)
             if(cat) free(writen);
             //memcpy(buf,addr,size);
             //free(addr);
-            intr_enable_loop();
+            
             return real_sz;
         }
-        intr_enable_loop();
+        
         return 0;
 }
-uint32 fs_get_size(int fd)
+uint32 fs_get_size(void* f)
 {
-    fd_desc_t*file=fs_get_fd(fd);
-    if(!file)
-    {
-        return 0;
-    }
-    fs_fd_t*self=file->target_ptr;
+    fs_fd_t*self=f;
     return self->f->file_size;
 }
 void fs_print_root()
 {
     print_directory(fatfs,root_dir);
 }
-void fs_interface_init(f32 *fs)
+fs_interface_t* fs_interface_init(f32 *fs)
 {
     //fd_map=malloc_pages(sizeof(fs_fd_t)*fd_map_sz/4096+1);
     //memset(fd_map,0,sizeof(fs_fd_t)*fd_map_sz);
@@ -491,9 +414,9 @@ void fs_interface_init(f32 *fs)
     }
     strcpy(inter->info.info,"FAT32 FS");
     strcpy(inter->info.name,"FAT32 FS");
-    inter->info.magic=0x23333;
+    inter->info.magic=FAT_MAGIC;
     inter->info.version=10;
-    inter->methods.open=fs_open_cflag;
+    inter->methods.open=fs_open;
     inter->methods.close=fs_close;
     inter->methods.lseek=fs_lseek;
     inter->methods.read=fs_read;
@@ -501,8 +424,8 @@ void fs_interface_init(f32 *fs)
     inter->methods.tell=fs_tell;
     inter->methods.del=fs_del;
     inter->self_data=NULL;
-    
-    ata_selected_dev->fs=inter;
+    return inter;
+    //ata_selected_dev->fs=inter;
     /*int fd=ata_selected_dev->fs->methods.open("/d.txt","r");
     printk("open a fd:%d\n",fd);
     char buf[100];

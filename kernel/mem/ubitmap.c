@@ -2,7 +2,7 @@
  * @Description: 用户虚拟内存管理模块
  * @Author: QIUFUYU
  * @Date: 2021-10-02 18:24:09
- * @LastEditTime: 2022-01-09 07:51:24
+ * @LastEditTime: 2022-01-10 21:34:32
  */
 #include"console.h"
 #include"mem/ubitmap.h"
@@ -10,6 +10,7 @@
 #include"qmath.h"
 void ubitmap_set_page(ubitmap_t *bitmap, uint32 page_index) {
     bitmap->bits[page_index/32] |= (0x80 >> (page_index % 32));
+    
 }
 
 void ubitmap_unset_page(ubitmap_t *bitmap, uint32 page_index) {

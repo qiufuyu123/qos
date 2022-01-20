@@ -6,19 +6,24 @@ SECTIONS {
     .text : AT(ADDR(.text) - 0xC0000000)
     {
         *(.multiboot)
+        code = .; _code = .; __code = .;
         *(.text)
-        *(.rodata*)
+        . = ALIGN(4096);
     }
 
-    .data ALIGN (0x1000) : AT(ADDR(.data) - 0xC0000000)
+    .data ALIGN(0x1000): AT(ADDR(.data) - 0xC0000000)
     {
-        *(.data)
+     data = .; _data = .; __data = .;
+     *(.data)
+     *(.rodata)
+     . = ALIGN(4096);
     }
 
-    .bss : AT(ADDR(.bss) - 0xC0000000)
+    .bss  : AT(ADDR(.bss) - 0xC0000000)
     {
-        *(COMMON)
-        *(.bss)
+    bss = .; _bss = .; __bss = .;
+    *(.bss)
+    . = ALIGN(4096);
     }
     kernel_virt_end_var = .;
     kernel_phys_end_var = (. - 0xC0000000);

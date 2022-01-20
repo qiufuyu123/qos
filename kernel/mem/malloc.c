@@ -2,7 +2,7 @@
  * @Description: 简单的内存分配算法
  * @Author: QIUFUYU
  * @Date: 2021-09-25 11:52:37
- * @LastEditTime: 2022-01-09 07:51:17
+ * @LastEditTime: 2022-01-19 21:40:09
  */
 #include"mem/memory.h"
 #include"qstring.h"
@@ -288,9 +288,9 @@ static void* alloc_mem(uint8 sz)
     if(active_memory.blocks[sz]==NULL)
     {
         //bool is_fail;
-        //printf("???\n");
+        printf("???\n");
         active_memory.blocks[sz]=alloc_mem_block(sz);
-        //printf("sz:%d alloc a new page!\n",sz);
+        printf("sz:%d alloc a new page!\n",sz);
         
         if(active_memory.blocks[sz]==NULL)
         {
@@ -356,6 +356,7 @@ bool mem_is_safe(uint32 page_sz,double save_ret)
 }
 void *calloc(int cnt,int len)
 {
+    if(cnt*len==0)return NULL;
     void *re=malloc(len*cnt);
     if(re)
     {
@@ -420,6 +421,7 @@ void* malloc(uint32 size)
     }
     else if(size>512 && size<=1024)
     {
+        printf("alloc >512");
         void*re= alloc_mem(M_1024);
         //lock_release(&lock);
         return re;

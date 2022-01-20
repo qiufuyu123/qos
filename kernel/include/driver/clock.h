@@ -2,7 +2,7 @@
  * @Description: 时钟驱动
  * @Author: QIUFUYU
  * @Date: 2021-11-28 12:26:49
- * @LastEditTime: 2021-11-29 20:28:29
+ * @LastEditTime: 2022-01-10 22:15:35
  */
 #ifndef _H_CLOCK
 #define _H_CLOCK
@@ -29,7 +29,7 @@ typedef long clock_t;
  * 1纳秒（ns）= 1000皮秒（ps）
  */
 
-struct SystemDate
+typedef struct SystemDate
 {
 	int second;         /* [0-59] */
 	int minute;         /* [0-59] */
@@ -40,7 +40,7 @@ struct SystemDate
 	int weekDay;        /* [0-6] */
 	int yearDay;        /**/
 	int isDst;          /* 夏令时[-1,0,1] */
-};
+}SystemDate_t;
 
 extern struct SystemDate systemDate;
 
@@ -70,4 +70,5 @@ static inline void BIN2DATE(struct SystemDate* date,unsigned int bin)
 	date->minute=DATA16_TO_TIME_MIN(bin);
 	date->second= DATA16_TO_TIME_SEC(bin);
 }
+#define GET_CURDATE_BIN DATE2BIN(systemDate)
 #endif

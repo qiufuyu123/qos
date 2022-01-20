@@ -2,10 +2,11 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-05 11:22:56
- * @LastEditTime: 2022-01-08 22:22:26
+ * @LastEditTime: 2022-01-16 19:18:59
  */
 #include"fs/qufs/fs.h"
 #include"fs/hdd.h"
+#include"fs/qufs/interface.h"
 #include"fs/qufs/inode.h"
 #include"fs/qufs/super_block.h"
 #include"qmath.h"
@@ -172,13 +173,11 @@ printk("sz:%d\n",ata_selected_dev->size);
     }
     buf[0]=0x00;
     qu_inode_t*inodes=buf;
+    qu_inode_init(inodes,sb->data_start_lba,0);
     inodes->sz=sb->dir_entry_sz*3;
-    inodes->inode_idx=0;
-    inodes->data_sects[0]=sb->data_start_lba;
     inodes++;
+    qu_inode_init(inodes,sb->data_start_lba+1,1);
     inodes->sz=sb->dir_entry_sz*3;
-    inodes->inode_idx=1;
-    inodes->data_sects[0]=sb->data_start_lba+1;
     //sizeof(qu_inode_t);
     printk("wirte inode_table!\n");
     if(ata_write(ata_selected_dev,sb->inode_table_lba,1,buf)<0)
@@ -267,5 +266,6 @@ printk("sz:%d\n",ata_selected_dev->size);
     printk("got file : %s <============\n",entry->file_namep);
     //entry->inode_idx
     //printk("name:%s\n",qu_file_get(re,"sys")->name);
+    
     return re;
 }

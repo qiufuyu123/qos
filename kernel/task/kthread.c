@@ -2,7 +2,7 @@
  * @Description: 内核线程
  * @Author: QIUFUYU
  * @Date: 2021-09-29 21:31:39
- * @LastEditTime: 2022-01-08 11:58:06
+ * @LastEditTime: 2022-01-18 21:35:18
  */
 #include"task/kthread.h"
 #include"mem/malloc.h"
@@ -126,6 +126,7 @@ void init_thread(struct task_struct* pthread, char* name, int prio) {
       pthread->open_fd[2]=2;//stderr
       printf("init open fd list ok!!!!!!!!!!!!!!!!!!!!!!!\n");
    }
+   pthread->fd_cnt=4096/4;
    //if(!pthread->open_fd)
    /*
    PCB的上端是0特权级栈，将来线程在内核态下的任何栈操作都是用此PCB中的栈，如果出现了某些异常导致入栈操作过多，这会破坏PCB低处的线程信息。为此，需要检测这些线程信息是否被破坏了，stack_magic被安排在线程信息的最边缘，作为它与栈的边缘。目前用不到此值，以后在线程调度时会检测它。pthread->stack_magic自定义个值就行，我这里用的是0x19870916，这与代码功能无关。
@@ -135,7 +136,16 @@ void init_thread(struct task_struct* pthread, char* name, int prio) {
       pthread->fd_handles[i]=-1;*/
    pthread->stack_magic = 0x1919;	  // 自定义的魔数
 }
-
+int thread_lookfor_freefd(task_struct_t*pthread)
+{
+   for (int i = 3; i < FD_LIST_MAX; i++)
+   {
+      /* code */
+      if(!pthread->open_fd[i])
+         return i;
+   }
+   return -1;
+}
 /* 函数功能是创建一优先级为prio的线程,线程名为name,线程所执行的函数是function(func_arg) */
 // 4个参数，name为线程名，prio为线程的优先级，要执行的函数是function，func_arg是函数function的参数
 struct task_struct* thread_start(char* name, int prio, thread_func function, void* func_arg) {

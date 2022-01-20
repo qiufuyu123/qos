@@ -2,7 +2,7 @@
  * @Description: qufs的文件（目录）
  * @Author: QIUFUYU
  * @Date: 2021-12-10 20:51:55
- * @LastEditTime: 2022-01-08 21:46:54
+ * @LastEditTime: 2022-01-16 19:53:08
  */
 #ifndef _H_QUFILE
 #define _H_QUFILE
@@ -28,6 +28,7 @@ typedef struct qu_file
     char name[MAX_FILE_NAME_LEN];
     qu_file_data_t data;
     qu_inode_t*inode;
+    uint32 bind_fd_idx;
 }qu_file_t;
 enum QU_FILE_ERR
 {
@@ -41,6 +42,8 @@ enum QU_FILE_ERR
     ERR_NULL_INODE,
     ERR_BAD_PATH
 };
+char *path_get_lastdir(char *path);
+char *path_get_filename(char *path,int *last_split_sym);
 //char *qu_long2short(char *name,uint32 len);
 enum QU_FILE_ERR qu_file_reg(qufs_desc_t*fs,qu_inode_t*inode,char *name);
 qu_file_t* qu_file_get(qufs_desc_t*fs,char *name);

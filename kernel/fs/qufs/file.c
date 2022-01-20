@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-12-10 21:13:39
- * @LastEditTime: 2022-01-08 22:15:37
+ * @LastEditTime: 2022-01-17 20:30:58
  */
 #include"fs/qufs/file.h"
 #include"fs/qufs/dir.h"
@@ -20,6 +20,49 @@
 #define printk printf_null
 #endif
 
+//获取文件名
+char *path_get_filename(char *path,int *last_split_sym)
+{
+    for(int i=strlen(path)-1;i>=0;i--)
+    {
+        if(path[i]=='/')
+        {
+            if(last_split_sym)
+            {
+                *last_split_sym=i;
+            }
+            return strdup(path[i]+1);
+        }
+    }
+    if(last_split_sym)*last_split_sym=-1;
+    return NULL;
+}
+
+//获取最近的目录
+//例:   /a/b/c.txt 返回 b
+char *path_get_lastdir(char *path)
+{
+    int last=-1;
+    char *buf=path_get_filename(path,&last);
+    if(!buf)return NULL;
+    if(last==-1)
+    {
+        free(buf);
+        return NULL;
+    }
+    char *ls=path;
+    for(int i=last-1;i>=0;i--)
+    {
+        if(ls[i]=='/')
+        {
+            free(buf);
+            return strdup(ls[i]+1);
+        }
+    }
+    free(buf);
+    return NULL;
+
+}
 static char *path_parse(char *path_name,char *p_name)
 {
     char *ls_name=path_name;
@@ -89,8 +132,8 @@ static char *path_parse(char *path_name,char *p_name)
 //return: /a *child : b.txt
 char *get_pdir_path(char *path,char *child)
 {
-    char *ret=strdup(path);
-    memset(ret,0,strlen(path)+1);
+    char *ret=calloc(1,strlen(path));
+    memset(ret,0,strlen(path));
     char *src_path=path;
     char *last_split=NULL;
     for(int i=0;i<strlen(src_path);i++)
@@ -141,6 +184,7 @@ char *get_pdir_path(char *path,char *child)
 static qu_file_t*new_file()
 {
     qu_file_t*re=calloc(1,sizeof(qu_file_t));
+    
     return re;
 
 }
@@ -156,7 +200,7 @@ qu_file_t*qu_file_create(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
         return NULL;
     }
     //console_clean();
-    printk("pdir:%s child:%s 0x%x\n",pdir_name,file_name,fs);
+    printf("pdir:%s child:%s 0x%x\n",pdir_name,file_name,fs);
     //while(1);
     int32 inode_idx=qu_inode_bitmap_alloc(fs);
     printf("inode:%d\n",inode_idx);
@@ -208,6 +252,7 @@ qu_file_t*qu_file_create(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
     }
     mem_cleaner_t clean;
     int8 e;
+    //qu_file_t *buf;
     qu_file_t*parent_dir= qu_file_search(fs,pdir_name,&e);
     
     if(e!=ERR_SUCCESS)
@@ -245,7 +290,7 @@ qu_file_t*qu_file_create(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
     //注册文件
     //重新打开,刷新缓冲区
     
-    strcat(pdir_name,"/");
+    //strcat(pdir_name,"/");
     strcat(pdir_name,file_name);
     e= qu_file_reg(fs,file_inode,pdir_name);
     //printf("reg file:%s\n",pdir_name);
@@ -269,6 +314,7 @@ qu_file_t*qu_file_create(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
 
 qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
 {
+    //lsat_open=NULL;
     if(!strcmp(path,"/")||!strcmp(path,"/.")||!strcmp(path,"/.."))
     {
         //根目录
@@ -279,6 +325,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
     {
         return NULL;
     }
+    
     //先判断路径是否已经被打开过
     // /a/d1/../d1/./t.txt
     
@@ -387,7 +434,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
             f_ptr=NULL;
             qu_dir_entry_t*ent=qu_dir_getentry(fs,ret_path,p_path);
             if(!ent)break;
-            
+            //lsat_open=ent;
             memset(last_p_path,0,64);
             strcpy(last_p_path,p_path);
             strcpy(last_ret_path,ret_path);
@@ -405,6 +452,7 @@ qu_file_t *qu_file_search(qufs_desc_t*fs,char *path,enum QU_FILE_ERR *err)
                 free(last_ret_path);
                 return NULL;
             }
+            //lsat_open=qu_file_get(fs,ret_path);
             //printf("open dir:%s reg file ok\n",ent->file_namep);
             ls_path=name;
         }

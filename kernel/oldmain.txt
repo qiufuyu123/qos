@@ -1,0 +1,53 @@
+test qufs:
+    ata_device_t*dev=get_ata_device("/dev/hda");
+    printk("dev:0x%x\n",dev);
+    ata_set_selected_dev(dev);
+    qufs_desc_t*fs= init_qufs();
+    if(!qufs_install_indevice(fs))
+    {
+        printf("fail to install qufs_interface!\n");
+        while(1);
+    }
+    console_clean();
+    if(fs)
+    {
+    printk("qufs has inited OKAY!\n");
+    }
+    else
+    {
+        printk("qufs init fail!\n");
+        ASSERT(false);
+    }
+    uint8_t err=0;
+    qu_file_t*f;
+    f=qu_file_search(fs,"/sys",&err);
+    if(err!=ERR_SUCCESS)
+    {
+        printk("OPEN FAIL! %d\n",err);
+    }else
+    {
+        printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
+    }
+    /*f= qu_file_create(fs,"/crate1.txt",&err);
+    if(err!=ERR_SUCCESS)
+    {
+        printf("err:%d\n",err);
+        while(1);
+    }*/
+    int fd_idx= ata_selected_dev->fs->methods.open("/crate1.txt",O_CR);
+    printk("233");
+    if(fd_idx<0)
+    {
+        printk("fd err:%d\n",fd_idx);while(1);
+    }
+    f=((qufs_fd_t*)fs_get_fd(fd_idx)->target_ptr)->ptr;
+    //f=qu_file_search(fs,"/crate1.txt",&err);
+    if(err!=ERR_SUCCESS)
+    {
+        printk("OPEN FAIL! %d\n",err);
+    }else
+    {
+        printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
+    }
+    //f=qu_file_search(fs,"/not",&err);
+    //printk("kthread end\n%s\n",bin);

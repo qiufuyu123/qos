@@ -2,7 +2,7 @@
  * @Description: 
  * @Author: QIUFUYU
  * @Date: 2021-09-16 21:31:48
- * @LastEditTime: 2021-12-06 22:18:03
+ * @LastEditTime: 2022-01-16 19:24:17
  */
 
 #include"isr.h"
@@ -54,6 +54,12 @@ void isr_handler(registers_t regs)
          console_set_color(BLACK,LIGHT_BLUE);
          printf("AN Error Occurs In Process!\n");
          printf("task pid:%d name:%s ! err_no:%d\n",cur->pid,cur->name,regs.int_num);
+         if(regs.int_num==14)
+         {
+                           int page_fault_vaddr = 0; 
+      asm ("movl %%cr2, %0" : "=r" (page_fault_vaddr));	  // cr2是存放造成page_fault的地址
+      printf("                           page not map:0x%x\n",page_fault_vaddr);
+         }
          printf("thread has died!\n");
          console_set_color(BLACK,RED);
          printf("#==========ERROR==========#\n");

@@ -1,8 +1,15 @@
 /*
+    old codes:
+    
+*/
+
+
+
+/*
  * @Description: kernel main
  * @Author: QIUFUYU
  * @Date: 2021-09-09 21:11:53
- * @LastEditTime: 2022-01-08 21:51:01
+ * @LastEditTime: 2022-01-19 21:59:45
  */
 #include"console.h"
 #include"gdt.h"
@@ -19,13 +26,16 @@
 //#include"fs/fat32.h"
 //#include"mem/page.h"
 #include"fs/hdd.h"
-#include"fs/fat32/fat32.h"
-#include"fs/qufs/fs.h"
-#include"fs/fat32/interface.h"
+//#include"fs/fat32/fat32.h"
+//#include"fs/qufs/fs.h"
+//#include"fs/fat32/interface.h"
+#include"fs/fatfs/interface.h"
+//#include"fs/qufs/interface.h"
 #include"exec/exec.h"
 #include"dev/devfs.h"
 #include"driver/clock.h"
-#include"fs/fd.h"
+//#include"fs/fd.h"
+
 void k_thread_a(void*);
 int u_proc_a(void);
 #define TEST_DEV
@@ -49,7 +59,7 @@ void test()
     printf("a:%s",a);
 }
 
-
+int k_kernel_thread(void);
 #define VIRTUAL_KERNEL_BASE 0xC0000000
 void kernel_main(multiboot_info_t *mbt)
 {int b;
@@ -86,7 +96,7 @@ thread_init();
 
     ata_init();
     ata_set_selected_dev(get_ata_device("/dev/hda"));
-    fs_init_fdmgr(1000);
+    //fs_init_fdmgr(1000);
 
     
     
@@ -121,7 +131,8 @@ thread_init();
     //printf("re:%d\n",func());
     //while(1)
     
-    thread_start("kernel_main",31,k_thread_a,"argB ");
+    thread_start("kernel_keyboard",31,k_thread_a,"argB ");
+    thread_start("kernel_main",31,k_kernel_thread,NULL);
     task_struct_t*u1= process_execute(u_proc_a,"u1");
     //uint32 upid=u1->pid;
     /*f32 *fat_fs= makeFilesystem("fat32");
@@ -146,57 +157,13 @@ thread_init();
         
     //qufs_desc*qfs= qufs_mkfs(get_ata_device("/dev/hdb"));
     //printf("free:%d\n",qu_bitmap_getfree(qfs,1));
-    console_clean();
-    ata_device_t*dev=get_ata_device("/dev/hda");
-    printk("dev:0x%x\n",dev);
-    ata_set_selected_dev(dev);
-    qufs_desc_t*fs= init_qufs();
-    console_clean();
-    if(fs)
-    {
-    printk("qufs has inited OKAY!\n");
-    }
-    else
-    {
-        printk("qufs init fail!\n");
-        ASSERT(false);
-    }
-    uint8_t err=0;
-    qu_file_t*f;
-    f=qu_file_search(fs,"/sys",&err);
-    if(err!=ERR_SUCCESS)
-    {
-        printk("OPEN FAIL! %d\n",err);
-    }else
-    {
-        printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
-    }
-    f= qu_file_create(fs,"/crate1.txt",&err);
-    if(err!=ERR_SUCCESS)
-    {
-        printf("err:%d\n",err);
-        while(1);
-    }
-    f=qu_file_search(fs,"/crate1.txt",&err);
-    if(err!=ERR_SUCCESS)
-    {
-        printk("OPEN FAIL! %d\n",err);
-    }else
-    {
-        printk("OPEN SUCCESSFULLY! %s %d\n",f->name,f->inode->inode_idx);
-    }
-    f=qu_file_search(fs,"/not",&err);
-    while(1);
+    //while(1);
         init_clock();
     init_timer(1000);
     intr_enable();
     
     init_keyboard();
-    //printk("get min :%s\n",get_min_path("/a/./././././../b/././c/d/../e"));
-    while (1)
-    {
-        // code 
-    }
+    console_clean();
 
     
 
@@ -224,6 +191,42 @@ thread_init();
     
     
 }
+int k_kernel_thread(void)
+{
+
+
+    //SystemDate_t data;
+    //printf("bin time:%d\n",f->inode->create_time);
+    
+    //BIN2DATE(&data,f->inode->create_time);
+    //while(1);
+    //printk("create date: %d-%d-%d %d-%d-%d\n",data.year,data.month,data.day,data.hour,data.minute,data.second);
+    //printk("get min :%s\n",get_min_path("/a/./././././../b/././c/d/../e"));
+    //fd_idx= ata_selected_dev->fs->methods.open("/crate1.txt",O_CR);
+    //printf("err:%d\n",fd_idx);
+    if(!fsinterface_init())
+    {
+        printf("FAIL to init fsinterface");
+        while(1);
+    }
+    printf("init fs_general ok!\n");
+    if(!fatfs_interface_init(0))
+    {
+        printf("FAIL TO INIT FATFS!");
+        while(1);
+    }
+    printf("wow!\n");
+    int fd= general_interface.methods.open("/hello_fs.txt",FA_CREATE_NEW|FA_WRITE);
+    printf("fd is %d\n",fd);//正常显示fd
+    fd= general_interface.methods.open("/hello_fs.txt",FA_CREATE_NEW|FA_WRITE);
+    printf("fd is %d\n",fd);//显示-1，因为已经打开过了
+    //printf("res is%d cmp to \n",res);
+    while (1)
+    {
+        // code 
+    }
+
+}
 int u_proc_a(void)
 {
     //uint32 t1=1/0;
@@ -233,8 +236,8 @@ int u_proc_a(void)
     //exec_elf32("/d1/test.elf");
     //printf("this is a child thread!\n");
     //fs_print_root();
-    exec_elf32("/d1/test.elf");
-    printf("exe exit\n");
+    //exec_elf32("/d1/test.elf");
+    //printf("exe exit\n");
     while(1);
     return 1;
 }
@@ -245,6 +248,7 @@ void k_thread_a(void*args)
     //新的kernel进程
     while (1)
     {
+        //printf("A");
         char a=get_key();
         if(a!=0)
             put_char(a,BLACK,WHITE);

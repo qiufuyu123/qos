@@ -59,6 +59,12 @@
         "xtr1common": "c",
         "hashmap.h": "c",
         "fd.h": "c",
-        "cleaner.h": "c"
-    }
+        "cleaner.h": "c",
+        "fs_interface.h": "c",
+        "diskio.h": "c",
+        "ff.h": "c"
+    },
+    "powermode.enabled": true,
+    "powermode.shakeIntensity": 0,
+    "powermode.enableShake": false
 }

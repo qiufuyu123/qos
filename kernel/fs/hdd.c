@@ -2,7 +2,7 @@
  * @Description: 硬盘驱动
  * @Author: QIUFUYU
  * @Date: 2021-10-04 18:42:41
- * @LastEditTime: 2021-12-07 20:41:06
+ * @LastEditTime: 2022-01-18 22:31:02
  */
 #include"kio.h"
 #include"mem/malloc.h"
@@ -12,6 +12,7 @@
 #include"isr.h"
 #include"qstring.h"
 ata_device_t*ata_selected_dev=NULL;
+int ata_selected_dev_id=0;
 //#define _HDD_DEBUG
 #ifndef _HDD_DEBUG
 #define printk printf_null
@@ -138,7 +139,7 @@ void ata_pio_outsw48(uint64_t LBA, uint16 sectorcount, uint8 *target) {
  */
 #define MAX_ATA_DEVICE 2
 
-static struct ata_device devices[MAX_ATA_DEVICE];
+struct ata_device devices[MAX_ATA_DEVICE];
 static uint8_t number_of_actived_devices = 0;
 static volatile bool ata_irq_called;
 static void ata_400ns_delays(struct ata_device *device)
@@ -284,6 +285,7 @@ static struct ata_device *ata_detect(uint16_t io_addr1, uint16_t io_addr2, uint8
 		printk("ATA: Identified %s", dev_name);
 		device->is_harddisk = true;
 		device->dev_name = dev_name;
+		device->dev_id=number_of_actived_devices;
 		devices[number_of_actived_devices++] = *device;
 		
 		return device;
@@ -293,6 +295,7 @@ static struct ata_device *ata_detect(uint16_t io_addr1, uint16_t io_addr2, uint8
 		printk("ATAPI: Identified %s", dev_name);
 		device->is_harddisk = false;
 		device->dev_name = "/dev/cdrom";
+		device->dev_id=number_of_actived_devices;
 		devices[number_of_actived_devices++] = *device;
 		return device;
 	}
@@ -623,6 +626,14 @@ int8_t ata_write(ata_device_t*device,uint64_t lba,uint16 n_sectors,uint16_t*buff
 		return ata_write_48(device,lba,n_sectors,buffer);
 	}
 }
+struct ata_device *get_ata_device_by_id(uint32 idx)
+{
+	if(idx<MAX_ATA_DEVICE)
+	{
+		return &devices[idx];
+	}else return NULL;
+	//TODO:其他挂载设备支持
+}
 struct ata_device *get_ata_device(char *dev_name)
 {
 	for (uint8_t i = 0; i < MAX_ATA_DEVICE; ++i)
@@ -656,6 +667,7 @@ void ata_set_selected_dev(ata_device_t *dev)
 
 	printk("select to:%x\n",dev);
 	ata_selected_dev=dev;
+	
 	printk("select to:%x\n",ata_selected_dev);
 }
 #ifndef _HDD_DEBUG

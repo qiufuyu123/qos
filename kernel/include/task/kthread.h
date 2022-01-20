@@ -2,7 +2,7 @@
  * @Description: 内核线程
  * @Author: QIUFUYU
  * @Date: 2021-09-29 21:20:24
- * @LastEditTime: 2022-01-03 15:45:07
+ * @LastEditTime: 2022-01-18 21:34:57
  */
 #ifndef _H_KTHREAD
 #define _H_KTHREAD
@@ -91,6 +91,7 @@ typedef struct task_struct {
    uint8 priority; // 记录线程优先级
    uint8 ticks;	   // 每次在处理器上执行的时间嘀嗒数
    uint32* open_fd;//打开的fd指针   
+   uint32 fd_cnt;
 /* 此任务自上cpu运行后至今占用了多少cpu嘀嗒数,
  * 也就是此任务执行了多久*/
    uint32 elapsed_ticks;
@@ -125,5 +126,5 @@ void schedule(void);
 void thread_init(void);
 void thread_block(enum task_status stat);
 void thread_unblock(struct task_struct* pthread);
-
+int thread_lookfor_freefd(task_struct_t*pthread);
 #endif
