@@ -2,7 +2,7 @@
  * @Description: 所有文件系统的接口
  * @Author: QIUFUYU
  * @Date: 2021-12-19 11:20:49
- * @LastEditTime: 2022-01-18 22:39:10
+ * @LastEditTime: 2022-01-20 20:09:23
  */
 #ifndef _H_FS_INTERFACE
 #define _H_FS_INTERFACE
@@ -36,6 +36,10 @@ typedef struct fs_interface_methods
     int (*read)(void* f,char *buf,uint32 len);
     int (*write)(void* f,char *buf,uint32 len);
     int (*del)(void* fd);//删除文件
+    int (*mkdir)(char *path);
+    void* (*open_dir)(char *path);
+    int (*close_dir)(char *path);
+    int (*read_dir)(void *dir,void *dir_info);
 }fs_interface_methods_t;
 typedef struct fs_interface_info
 {

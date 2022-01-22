@@ -2,7 +2,7 @@
  * @Description: 最终文件接口
  * @Author: QIUFUYU
  * @Date: 2022-01-03 10:15:48
- * @LastEditTime: 2022-01-19 21:57:21
+ * @LastEditTime: 2022-01-21 12:18:56
  */
 #include"fs/fs_interface.h"
 #include"fs/hdd.h"
@@ -20,28 +20,113 @@ qtree_t* fs_tree;
 fs_interface_t general_interface;
 fs_interface_t fs_list[5];
 mounted_info_t mount_info;
+#define FILE_DESC_MAGIC 0xABCC
 typedef struct file_desc
 {
     //在fs_tree内的文件描述信息
+    uint16 magic;
+
     uint32 pid;//持有文件的进程,为0表示没有被持有
     //bool deny;//是否被打开了
     uint8 type;//文件类型
     int open_times;//打开次数,用于释放算法
     void *f_data;
+    void *f_mounted_info;
 }file_desc_t;
 
 
 #define DIR_COMMON 0
-static file_desc_t* new_desc(uint8 type,void *data)
+static file_desc_t* new_desc(uint8 type,void *data,void *mounted)
 {
     file_desc_t* re=calloc(1,sizeof(file_desc_t));
     if(!re)return NULL;
     re->f_data=data;
     re->open_times=1;
     re->pid=running_thread()->pid;
+    re->magic=0xABCC;
     re->type=type;
+    re->f_mounted_info=mounted;
     return re;
+
 }
+static void switch_to_mounted()
+{
+
+}
+bool check_fd(int fd)
+{
+    if(fd>=3&&fd<FD_LIST_MAX)return true;
+    return false;
+}
+
+//读取文件
+int gen_read(int fd,char *buf,uint32 len)
+{
+    if(!check_fd(fd))return -1;
+    file_desc_t*des=running_thread()->open_fd[fd];
+    des->pid=0;
+    mounted_info_t m_info=mount_info;
+    if(des->f_mounted_info)
+    {
+        //当前文件是mounted的，那么调用他自身的算法
+        mount_info=*((mounted_info_t*)des->f_mounted_info);
+    }
+    int ret=mount_info.fs->methods.read(des->f_data,buf,len);
+    mount_info=m_info;
+    if(ret<0)
+    {
+        
+        return -1;
+    }
+    return ret;    
+}
+
+//写入文件接口
+int gen_write(int fd,char *buf,uint32 len)
+{
+    if(!check_fd(fd))return -1;
+    file_desc_t*des=running_thread()->open_fd[fd];
+    des->pid=0;
+    mounted_info_t m_info=mount_info;
+    if(des->f_mounted_info)
+    {
+        //当前文件是mounted的，那么调用他自身的算法
+        mount_info=*((mounted_info_t*)des->f_mounted_info);
+    }
+    int ret=mount_info.fs->methods.write(des->f_data,buf,len);
+    mount_info=m_info;
+    if(ret<0)
+    {
+        
+        return -1;
+    }
+    return ret;
+}   
+
+//关闭文件
+int gen_close(int fd)
+{
+    if(!check_fd(fd))return -1;
+    file_desc_t*des=running_thread()->open_fd[fd];
+    if(des->magic!=FILE_DESC_MAGIC)return -1;
+    des->pid=0;
+    mounted_info_t m_info=mount_info;
+    if(des->f_mounted_info)
+    {
+        //当前文件是mounted的，那么调用他自身的算法
+        mount_info=*((mounted_info_t*)des->f_mounted_info);
+    }
+
+    if(mount_info.fs->methods.close(des->f_data)>=0)
+    {
+        mount_info=m_info;
+        return -1;
+    }
+    mount_info=m_info;
+    return 0;
+}
+
+//打开文件
 int gen_open(char *path,uint32 flags)
 {
     //strtok()
@@ -60,6 +145,7 @@ int gen_open(char *path,uint32 flags)
     //char *mid=strchr(file_path,'/');
     printf("f:%s\n",file_path);
     //printf("token:%s\n",token);
+    mounted_info_t *m_info=NULL;
     while(token)
     {
         if(!strcmp(token,"."))
@@ -99,6 +185,7 @@ int gen_open(char *path,uint32 flags)
                         //保存原来的mount_info
                         mounted_info_t before=mount_info;
                         mount_info=*((mounted_info_t*)dir_node->data);
+                        m_info=(mounted_info_t*)dir_node->data;
                         //int dev_idx=dir_node->data;
                         //ata_device_t*dev=get_ata_device_by_id(dev_idx);
                         //if(!)return -1;
@@ -112,6 +199,7 @@ int gen_open(char *path,uint32 flags)
                         }
                         if(inter->methods.open)
                         {
+                            mount_info=before;
                             //确认open方法存在
                             //重新组装file_path
                             char *new_path=calloc(1,strlen(file_path)+1);
@@ -124,7 +212,7 @@ int gen_open(char *path,uint32 flags)
                             new_path[0]='/';
                             strcat(new_path,file_path);
                             void*addr= inter->methods.open(new_path,flags);
-                            mount_info=before;
+                            //mount_info=before;
                             if(!addr)
                             {
                                 free(file_path);
@@ -132,7 +220,7 @@ int gen_open(char *path,uint32 flags)
                                 return -1;
                             }
                             free(new_path);
-                            file_desc_t*fd= new_desc(TYPE_MOUNTED,addr);
+                            file_desc_t*fd= new_desc(TYPE_MOUNTED,addr,m_info);
                             if(!fd)
                             {
                                 free(file_path);
@@ -168,7 +256,7 @@ int gen_open(char *path,uint32 flags)
                             free(file_path);
                             return -1;
                         }
-                        final_des=new_desc(TYPE_COMMON,addr);
+                        final_des=new_desc(TYPE_COMMON,addr,NULL);
                         if(!final_des)
                         {
                             free(file_path);
@@ -230,7 +318,7 @@ int gen_open(char *path,uint32 flags)
             free(file_path);
             return -1;
         }
-        final_des=new_desc(TYPE_COMMON,addr);
+        final_des=new_desc(TYPE_COMMON,addr,NULL);
         if(!final_des)
         {
             free(file_path);
@@ -279,6 +367,10 @@ bool fsinterface_init()
     general_interface.info.magic=0x10101;
     general_interface.self_data=NULL;
     general_interface.methods.open=gen_open;
+    general_interface.methods.close=gen_close;
+    general_interface.methods.write=gen_write;
+    general_interface.methods.read=gen_read;
+    
     return true;
     //mount_info.fs=
 }
