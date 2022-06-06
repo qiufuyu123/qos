@@ -1,6 +1,7 @@
 # qos
 一个32位操作系统
-   ---作者 仇富誉
+   ---作者 仇富誉  
+   
 编译环境：linux 
 gcc ld nasm make qemu
 
